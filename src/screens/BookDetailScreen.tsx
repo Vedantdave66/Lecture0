@@ -1,5 +1,4 @@
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -25,9 +24,7 @@ export const BookDetailScreen = ({ navigation, route }: Props) => {
       return;
     }
     const asset = result.assets[0];
-    const destination = `${FileSystem.documentDirectory ?? ''}bookdrive/pdfs/${book.id}.pdf`;
-    await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory ?? ''}bookdrive/pdfs/`, { intermediates: true });
-    await FileSystem.copyAsync({ from: asset.uri, to: destination });
+    const destination = asset.uri;
     await setBookPDF(book.id, asset.uri, destination);
     Alert.alert('PDF uploaded', 'Your own PDF is ready for listening.');
   };

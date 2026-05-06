@@ -31,7 +31,17 @@ export const PlayerScreen = ({ navigation, route }: Props) => {
     setIsPreparing(true);
     try {
       const textChunks = await extractTextFromPDF(source);
-      const audioChunks = await Promise.all(textChunks.slice(0, 3).map((chunk) => generateAudio(chunk, book.voice, book.speed)));
+      const audioChunks = await Promise.all(
+        textChunks.slice(0, 3).map((chunk) =>
+          generateAudio({
+            bookId: book.id,
+            title: book.title,
+            author: book.author,
+            text: chunk,
+            voiceId: book.voice,
+          })
+        )
+      );
       await player.setActiveBook(book.id, audioChunks);
       await updateBook(book.id, { status: 'listening' });
       await player.play();
