@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "BookDrive",
+    "slug": "bookdrive",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "bookdrive",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "NSCameraUsageDescription": "BookDrive uses the camera to scan book covers for identification."
+      }
+    },
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-document-picker"
+    ]
+  }
+}
