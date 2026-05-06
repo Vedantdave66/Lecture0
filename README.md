@@ -8,10 +8,16 @@ BookDrive is an Expo managed-workflow React Native + TypeScript MVP for turning 
 - Library grid with saved book metadata, listening status, and progress.
 - Add Book flow with expo-camera cover-scan placeholder and Google Books manual search.
 - Public-domain PDF finder service ordered Project Gutenberg → Open Library → Internet Archive.
-- PDF upload fallback via Expo Document Picker and local storage via `expo-file-system`.
-- OpenAI `tts-1` TTS service stub with local SHA-256 cache per text/voice/speed.
+- PDF files and generated TTS audio are stored with `expo-file-system`.
+- OpenAI `tts-1` TTS service stub with local file caching per text/voice/speed.
 - `expo-av` audio backend for Expo Go-compatible playback, pause, resume, and 30-second seeking.
 - Minimal Driving Mode with oversized play and 30-second seek targets.
+
+## Expo Go compatibility
+
+This MVP intentionally avoids custom native modules that can cause Expo Go runtime crashes such as `PlatformConstants could not be found`.
+
+Allowed runtime libraries are limited to Expo-compatible pieces: `expo-av`, `expo-file-system`, `expo-camera`, `@react-navigation`, `zustand`, and `@react-native-async-storage/async-storage`.
 
 ## Setup
 
@@ -19,8 +25,6 @@ BookDrive is an Expo managed-workflow React Native + TypeScript MVP for turning 
 npm install
 npm run start
 ```
-
-Audio playback now uses `expo-av`, so the player can run in Expo Go without a custom native development build. `react-native-pdf` is still listed for the future PDF viewer path; if you wire native PDF rendering, use an Expo development build for that portion.
 
 ## API keys
 

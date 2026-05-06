@@ -1,5 +1,3 @@
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,24 +10,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'BookDetail'>;
 
 export const BookDetailScreen = ({ navigation, route }: Props) => {
   const book = useLibraryStore((state) => state.getBookById(route.params.bookId));
-  const setBookPDF = useLibraryStore((state) => state.setBookPDF);
   const setVoiceAndSpeed = useLibraryStore((state) => state.setVoiceAndSpeed);
 
   if (!book) {
     return <View style={styles.screen}><Text style={styles.missing}>Book not found.</Text></View>;
   }
 
-  const uploadPDF = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
-    if (result.canceled) {
-      return;
-    }
-    const asset = result.assets[0];
-    const destination = `${FileSystem.documentDirectory ?? ''}bookdrive/pdfs/${book.id}.pdf`;
-    await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory ?? ''}bookdrive/pdfs/`, { intermediates: true });
-    await FileSystem.copyAsync({ from: asset.uri, to: destination });
-    await setBookPDF(book.id, asset.uri, destination);
-    Alert.alert('PDF uploaded', 'Your own PDF is ready for listening.');
+  const showUploadUnavailable = () => {
+    Alert.alert(
+      'PDF upload unavailable in Expo Go',
+      'Native document picker modules were removed to keep this MVP Expo Go compatible. Add a public-domain PDF URL through the service layer or add a picker in a custom build later.'
+    );
   };
 
   const pdfStatus = book.pdfLocalPath ? 'user uploaded' : book.pdfUrl ? 'found' : 'not found';
@@ -44,7 +35,7 @@ export const BookDetailScreen = ({ navigation, route }: Props) => {
         <Text style={styles.statusLabel}>PDF status</Text>
         <Text style={styles.statusValue}>{pdfStatus}</Text>
       </View>
-      {!book.pdfUrl && !book.pdfLocalPath ? <Pressable style={styles.secondaryButton} onPress={() => void uploadPDF()}><Text style={styles.secondaryText}>Upload your own PDF</Text></Pressable> : null}
+      {!book.pdfUrl && !book.pdfLocalPath ? <Pressable style={styles.secondaryButton} onPress={showUploadUnavailable}><Text style={styles.secondaryText}>Upload your own PDF</Text></Pressable> : null}
       <VoiceSelector
         selectedVoice={book.voice}
         selectedSpeed={book.speed}

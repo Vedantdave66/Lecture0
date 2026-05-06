@@ -24,8 +24,7 @@
       ]
     },
     "plugins": [
-      "expo-camera",
-      "expo-document-picker"
+      "expo-camera"
     ]
   }
 }

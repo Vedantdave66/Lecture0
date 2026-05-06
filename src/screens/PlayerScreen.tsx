@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -50,11 +49,11 @@ export const PlayerScreen = ({ navigation, route }: Props) => {
       <Text style={styles.chapter}>Chapter / chunk {book.currentChunkIndex + 1}</Text>
       <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.round(book.progress * 100)}%` }]} /></View>
       <View style={styles.controls}>
-        <Pressable style={styles.roundButton} onPress={() => void player.skipBack(30)}><Ionicons name="play-back" size={28} color={colors.text} /></Pressable>
+        <Pressable style={styles.roundButton} onPress={() => void player.skipBack(30)}><Text style={styles.controlIcon}>↺</Text></Pressable>
         <Pressable style={styles.playButton} onPress={() => (player.chunkUris.length > 0 ? void player.toggle() : void prepareAndPlay())}>
-          {isPreparing ? <ActivityIndicator color={colors.background} /> : <Ionicons name={player.isPlaying ? 'pause' : 'play'} size={42} color={colors.background} />}
+          {isPreparing ? <ActivityIndicator color={colors.background} /> : <Text style={styles.playIcon}>{player.isPlaying ? 'Ⅱ' : '▶'}</Text>}
         </Pressable>
-        <Pressable style={styles.roundButton} onPress={() => void player.skipForward(30)}><Ionicons name="play-forward" size={28} color={colors.text} /></Pressable>
+        <Pressable style={styles.roundButton} onPress={() => void player.skipForward(30)}><Text style={styles.controlIcon}>↻</Text></Pressable>
       </View>
       <Text style={styles.speed}>{book.speed}x · {book.voice}</Text>
       <Pressable onPress={() => void audioService.savePosition(book.id)}><Text style={styles.save}>Save position</Text></Pressable>
@@ -75,5 +74,7 @@ const styles = StyleSheet.create({
   roundButton: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
   playButton: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
   speed: { color: colors.textMuted, marginTop: 18, textTransform: 'capitalize' },
-  save: { color: colors.accent, marginTop: 22 }
+  save: { color: colors.accent, marginTop: 22 },
+  controlIcon: { color: colors.text, fontSize: 32, fontWeight: '800' },
+  playIcon: { color: colors.background, fontSize: 42, fontWeight: '900' }
 });

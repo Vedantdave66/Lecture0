@@ -1,4 +1,3 @@
-import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system';
 
 import { TtsVoice } from '../types';
@@ -14,8 +13,13 @@ const ensureCacheDir = async (): Promise<void> => {
   }
 };
 
-const hashInput = async (text: string, voice: string, speed: number): Promise<string> => {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${voice}:${speed}:${text}`);
+const hashInput = (text: string, voice: string, speed: number): string => {
+  const input = `${voice}:${speed}:${text}`;
+  let hash = 5381;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 33) ^ input.charCodeAt(index);
+  }
+  return `tts-${Math.abs(hash).toString(36)}-${input.length.toString(36)}`;
 };
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
@@ -29,7 +33,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
 
 export const generateAudio = async (text: string, voice: TtsVoice, speed: number): Promise<string> => {
   await ensureCacheDir();
-  const hash = await hashInput(text, voice, speed);
+  const hash = hashInput(text, voice, speed);
   const filePath = `${CACHE_DIR}${hash}.mp3`;
   const cached = await FileSystem.getInfoAsync(filePath);
 

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -50,7 +49,7 @@ const MainTabs = () => (
       tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, height: 82, paddingBottom: 18, paddingTop: 10 },
       tabBarActiveTintColor: colors.accent,
       tabBarInactiveTintColor: colors.textMuted,
-      tabBarIcon: ({ color, size }) => <Ionicons name={route.name === 'LibraryTab' ? 'library' : 'musical-notes'} color={color} size={size} />
+      tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 22 }}>{route.name === 'LibraryTab' ? '▦' : '♪'}</Text>
     })}
   >
     <Tab.Screen name="LibraryTab" component={LibraryScreen} options={{ title: 'Library' }} />

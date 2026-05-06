@@ -22,7 +22,7 @@ const splitIntoChunks = (text: string): string[] => {
 };
 
 export const extractTextFromPDF = async (pdfUrl: string): Promise<string[]> => {
-  // TODO: wire pdf.js extraction for local/device builds. react-native-pdf renders PDFs while pdf.js extracts text.
+  // TODO: wire an Expo-compatible text extraction endpoint or pure JavaScript parser for production PDF text extraction.
   const response = await fetch(pdfUrl);
   if (!response.ok) {
     throw new Error('Unable to download PDF for text extraction.');

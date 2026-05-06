@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -38,7 +37,7 @@ export const LibraryScreen = () => {
         renderItem={({ item }) => <BookCard book={item} onPress={() => navigation.navigate('BookDetail', { bookId: item.id })} />}
       />
       <Pressable style={styles.fab} onPress={() => navigation.navigate('AddBook')}>
-        <Ionicons name="add" size={34} color={colors.background} />
+        <Text style={styles.fabIcon}>＋</Text>
       </Pressable>
     </View>
   );
@@ -55,5 +54,6 @@ const styles = StyleSheet.create({
   empty: { color: colors.textMuted, textAlign: 'center', fontSize: 16, lineHeight: 24 },
   demoButton: { backgroundColor: colors.accent, paddingHorizontal: 18, paddingVertical: 13, borderRadius: 999, marginTop: 18 },
   demoButtonText: { color: colors.background, fontWeight: '900' },
-  fab: { position: 'absolute', right: 22, bottom: 30, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }
+  fab: { position: 'absolute', right: 22, bottom: 30, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
+  fabIcon: { color: colors.background, fontSize: 38, lineHeight: 42, fontWeight: '800' }
 });

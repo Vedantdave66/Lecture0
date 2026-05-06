@@ -1,8 +1,5 @@
-import 'react-native-gesture-handler';
-
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
 
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { audioService } from './src/services/audioService';
@@ -17,9 +14,9 @@ export default function App() {
   }, [hydrateLibrary]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
+    <>
+      <StatusBar barStyle="light-content" />
       <AppNavigator />
-    </SafeAreaProvider>
+    </>
   );
 }
