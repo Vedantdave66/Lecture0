@@ -1,59 +1,78 @@
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BookCard } from '../components/BookCard';
 import { useLibraryStore } from '../store/libraryStore';
-import { colors, typography } from '../theme/colors';
-import { RootStackParamList } from '../types';
+import { colors, radii, spacing, typography } from '../theme/colors';
+import { Book, BookStatus } from '../types';
 
-type Navigation = NativeStackNavigationProp<RootStackParamList>;
+type Props = {
+  onOpenBook: (book: Book) => void;
+};
 
-export const LibraryScreen = () => {
-  const navigation = useNavigation<Navigation>();
+type Filter = 'all' | BookStatus;
+
+const filters: Filter[] = ['all', 'listening', 'reading', 'generated', 'completed'];
+
+export const LibraryScreen = ({ onOpenBook }: Props) => {
   const books = useLibraryStore((state) => state.books);
   const seedDemoLibrary = useLibraryStore((state) => state.seedDemoLibrary);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const filteredBooks = useMemo(() => {
+    return books.filter((book) => {
+      const matchesQuery = `${book.title} ${book.author}`.toLowerCase().includes(query.toLowerCase());
+      const matchesFilter = filter === 'all' || book.status === filter;
+      return matchesQuery && matchesFilter;
+    });
+  }, [books, filter, query]);
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Bluetooth-ready audiobooks</Text>
-        <Text style={styles.title}>BookDrive</Text>
-      </View>
-      <FlatList
-        data={books}
-        keyExtractor={(book) => book.id}
-        numColumns={2}
-        columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={styles.content}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.empty}>Add a book to start building your drive-time library, or load a realistic local demo with public-domain titles.</Text>
-            <Pressable style={styles.demoButton} onPress={() => void seedDemoLibrary()}>
-              <Text style={styles.demoButtonText}>Load demo library</Text>
-            </Pressable>
-          </View>
-        }
-        renderItem={({ item }) => <BookCard book={item} onPress={() => navigation.navigate('BookDetail', { bookId: item.id })} />}
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.eyebrow}>Library</Text>
+      <Text style={styles.title}>All audiobooks</Text>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search title or author"
+        placeholderTextColor={colors.textSubtle}
+        style={styles.search}
       />
-      <Pressable style={styles.fab} onPress={() => navigation.navigate('AddBook')}>
-        <Text style={styles.fabIcon}>＋</Text>
-      </Pressable>
-    </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {filters.map((item) => (
+          <Pressable key={item} style={[styles.filterChip, filter === item && styles.activeFilter]} onPress={() => setFilter(item)}>
+            <Text style={[styles.filterText, filter === item && styles.activeFilterText]}>{item}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      {filteredBooks.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No books yet</Text>
+          <Text style={styles.emptyText}>Load the demo library to explore the premium listening flow.</Text>
+          <Pressable style={styles.demoButton} onPress={() => void seedDemoLibrary()}>
+            <Text style={styles.demoText}>Load demo library</Text>
+          </Pressable>
+        </View>
+      ) : filteredBooks.map((book) => <BookCard key={book.id} book={book} onPress={() => onOpenBook(book)} />)}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 },
-  eyebrow: { color: colors.accent, letterSpacing: 1.4, textTransform: 'uppercase', fontSize: 12 },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 42, marginTop: 4 },
-  content: { padding: 16, paddingBottom: 120 },
-  gridRow: { justifyContent: 'space-between' },
-  emptyState: { alignItems: 'center', marginTop: 92, paddingHorizontal: 12 },
-  empty: { color: colors.textMuted, textAlign: 'center', fontSize: 16, lineHeight: 24 },
-  demoButton: { backgroundColor: colors.accent, paddingHorizontal: 18, paddingVertical: 13, borderRadius: 999, marginTop: 18 },
-  demoButtonText: { color: colors.background, fontWeight: '900' },
-  fab: { position: 'absolute', right: 22, bottom: 30, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
-  fabIcon: { color: colors.background, fontSize: 38, lineHeight: 42, fontWeight: '800' }
+  content: { padding: spacing.xl, paddingBottom: 170 },
+  eyebrow: { color: colors.primary, fontSize: typography.caption, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '800' },
+  title: { color: colors.text, fontSize: typography.title, fontWeight: '900', marginTop: spacing.xs, marginBottom: spacing.lg },
+  search: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg, color: colors.text, padding: spacing.lg, fontSize: typography.body },
+  filters: { gap: spacing.sm, paddingVertical: spacing.lg },
+  filterChip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+  activeFilter: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText: { color: colors.textMuted, textTransform: 'capitalize', fontWeight: '800' },
+  activeFilterText: { color: colors.background },
+  emptyState: { alignItems: 'center', marginTop: spacing.xxxl, padding: spacing.xl, backgroundColor: colors.surface, borderRadius: radii.xl, borderColor: colors.border, borderWidth: 1 },
+  emptyTitle: { color: colors.text, fontSize: typography.heading, fontWeight: '900' },
+  emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm, lineHeight: 22 },
+  demoButton: { marginTop: spacing.lg, backgroundColor: colors.primary, borderRadius: radii.pill, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+  demoText: { color: colors.background, fontWeight: '900' }
 });

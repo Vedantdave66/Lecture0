@@ -1,31 +1,28 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DrivingControls } from '../components/DrivingControls';
-import { useLibraryStore } from '../store/libraryStore';
 import { usePlayerStore } from '../store/playerStore';
-import { colors, typography } from '../theme/colors';
-import { RootStackParamList } from '../types';
+import { colors, spacing, typography } from '../theme/colors';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'DrivingMode'>;
+type Props = {
+  onExit: () => void;
+};
 
-export const DrivingModeScreen = ({ navigation, route }: Props) => {
-  const book = useLibraryStore((state) => state.getBookById(route.params.bookId));
+export const DrivingModeScreen = ({ onExit }: Props) => {
+  const activeBook = usePlayerStore((state) => state.activeBook);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const toggle = usePlayerStore((state) => state.toggle);
-  const skipBack = usePlayerStore((state) => state.skipBack);
-  const skipForward = usePlayerStore((state) => state.skipForward);
+  const seekBy = usePlayerStore((state) => state.seekBy);
 
   return (
-    <Pressable style={styles.screen} onPress={() => navigation.goBack()}>
-      <View style={styles.grain} pointerEvents="none" />
+    <Pressable style={styles.screen} onPress={onExit}>
       <View style={styles.header}>
-        <Text style={styles.now}>Driving Mode</Text>
-        <Text style={styles.title} numberOfLines={2}>{book?.title ?? 'No book selected'}</Text>
-        <Text style={styles.chapter}>Chapter / chunk {(book?.currentChunkIndex ?? 0) + 1}</Text>
+        <Text style={styles.now}>Car Mode</Text>
+        <Text style={styles.title} numberOfLines={2}>{activeBook?.title ?? 'No active audiobook'}</Text>
+        <Text style={styles.chapter}>{activeBook?.currentChapter ?? 'Start playback from Now Playing'}</Text>
       </View>
       <Pressable onPress={(event) => event.stopPropagation()} style={styles.controlsShell}>
-        <DrivingControls isPlaying={isPlaying} onToggle={() => void toggle()} onSkipBack={() => void skipBack(30)} onSkipForward={() => void skipForward(30)} />
+        <DrivingControls isPlaying={isPlaying} onToggle={() => void toggle()} onSkipBack={() => void seekBy(-30000)} onSkipForward={() => void seekBy(30000)} />
       </Pressable>
       <Text style={styles.exit}>Tap empty space to exit</Text>
     </Pressable>
@@ -33,12 +30,11 @@ export const DrivingModeScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#020204', padding: 28, justifyContent: 'space-between' },
-  grain: { ...StyleSheet.absoluteFillObject, opacity: 0.08, backgroundColor: colors.accent },
-  header: { marginTop: 40 },
-  now: { color: colors.accent, fontSize: 18, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '800' },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 42, marginTop: 16, lineHeight: 48 },
-  chapter: { color: colors.textMuted, fontSize: 24, marginTop: 10 },
+  screen: { flex: 1, backgroundColor: '#03050B', padding: spacing.xl, justifyContent: 'space-between' },
+  header: { marginTop: spacing.xxxl },
+  now: { color: colors.primary, fontSize: typography.subheading, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '900' },
+  title: { color: colors.text, fontSize: 40, marginTop: spacing.lg, lineHeight: 46, fontWeight: '900' },
+  chapter: { color: colors.textMuted, fontSize: 22, marginTop: spacing.md },
   controlsShell: { width: '100%' },
-  exit: { color: colors.textMuted, textAlign: 'center', fontSize: 18, marginBottom: 22 }
+  exit: { color: colors.textMuted, textAlign: 'center', fontSize: 16, marginBottom: spacing.lg }
 });

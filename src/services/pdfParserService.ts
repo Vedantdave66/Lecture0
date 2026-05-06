@@ -22,12 +22,7 @@ const splitIntoChunks = (text: string): string[] => {
 };
 
 export const extractTextFromPDF = async (pdfUrl: string): Promise<string[]> => {
-  // TODO: wire an Expo-compatible text extraction endpoint or pure JavaScript parser for production PDF text extraction.
-  const response = await fetch(pdfUrl);
-  if (!response.ok) {
-    throw new Error('Unable to download PDF for text extraction.');
-  }
-
-  const placeholderText = `PDF text extraction placeholder for ${pdfUrl}. Connect pdf.js here to extract selectable text from each page, then chunk at sentence boundaries.`;
-  return splitIntoChunks(placeholderText.repeat(80));
+  console.log('[BookDrivePDF] text extraction disabled in demo mode', pdfUrl);
+  const placeholderText = 'AI narration generation is coming soon. This placeholder keeps PDF chunking UI-ready without fetching or parsing external files.';
+  return splitIntoChunks(placeholderText.repeat(40));
 };

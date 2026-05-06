@@ -1,80 +1,113 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { audioService } from '../services/audioService';
-import { extractTextFromPDF } from '../services/pdfParserService';
-import { generateAudio } from '../services/ttsService';
+import { VoiceSelector } from '../components/VoiceSelector';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePlayerStore } from '../store/playerStore';
-import { colors, typography } from '../theme/colors';
-import { RootStackParamList } from '../types';
+import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Player'>;
+const formatTime = (millis: number): string => {
+  const totalSeconds = Math.max(0, Math.floor(millis / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
 
-export const PlayerScreen = ({ navigation, route }: Props) => {
-  const book = useLibraryStore((state) => state.getBookById(route.params.bookId));
-  const updateBook = useLibraryStore((state) => state.updateBook);
-  const player = usePlayerStore();
-  const [isPreparing, setIsPreparing] = useState(false);
+export const PlayerScreen = () => {
+  const books = useLibraryStore((state) => state.books);
+  const setVoiceAndSpeed = useLibraryStore((state) => state.setVoiceAndSpeed);
+  const activeBook = usePlayerStore((state) => state.activeBook) ?? books.find((book) => book.audioUrl) ?? null;
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const positionMillis = usePlayerStore((state) => state.positionMillis);
+  const durationMillis = usePlayerStore((state) => state.durationMillis);
+  const error = usePlayerStore((state) => state.error);
+  const loadBook = usePlayerStore((state) => state.loadBook);
+  const toggle = usePlayerStore((state) => state.toggle);
+  const seekBy = usePlayerStore((state) => state.seekBy);
 
-  if (!book) {
-    return <View style={styles.screen}><Text style={styles.title}>Book not found.</Text></View>;
+  if (!activeBook) {
+    return (
+      <View style={styles.emptyScreen}>
+        <Text style={styles.title}>Nothing playing yet</Text>
+        <Text style={styles.subtitle}>Load demo audiobooks from Home or Add to test playback.</Text>
+      </View>
+    );
   }
 
-  const prepareAndPlay = async () => {
-    const source = book.pdfLocalPath ?? book.pdfUrl;
-    if (!source) {
+  const duration = durationMillis || activeBook.duration * 1000;
+  const progress = duration > 0 ? Math.min(100, Math.round((positionMillis / duration) * 100)) : Math.round(activeBook.progress * 100);
+
+  const handlePlay = async () => {
+    if (!usePlayerStore.getState().isLoaded) {
+      await loadBook(activeBook, true);
       return;
     }
-    setIsPreparing(true);
-    try {
-      const textChunks = await extractTextFromPDF(source);
-      const audioChunks = await Promise.all(textChunks.slice(0, 3).map((chunk) => generateAudio(chunk, book.voice, book.speed)));
-      await player.setActiveBook(book.id, audioChunks);
-      await updateBook(book.id, { status: 'listening' });
-      await player.play();
-    } finally {
-      setIsPreparing(false);
-    }
+    await toggle();
   };
 
   return (
-    <View style={styles.screen}>
-      <Pressable style={styles.drivingButton} onPress={() => navigation.navigate('DrivingMode', { bookId: book.id })}>
-        <Text style={styles.drivingText}>Driving Mode</Text>
-      </Pressable>
-      <Image source={{ uri: book.coverUrl || 'https://placehold.co/240x360/13131A/E8C547/png?text=BookDrive' }} style={styles.cover} />
-      <Text style={styles.title}>{book.title}</Text>
-      <Text style={styles.chapter}>Chapter / chunk {book.currentChunkIndex + 1}</Text>
-      <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.round(book.progress * 100)}%` }]} /></View>
-      <View style={styles.controls}>
-        <Pressable style={styles.roundButton} onPress={() => void player.skipBack(30)}><Text style={styles.controlIcon}>↺</Text></Pressable>
-        <Pressable style={styles.playButton} onPress={() => (player.chunkUris.length > 0 ? void player.toggle() : void prepareAndPlay())}>
-          {isPreparing ? <ActivityIndicator color={colors.background} /> : <Text style={styles.playIcon}>{player.isPlaying ? 'Ⅱ' : '▶'}</Text>}
-        </Pressable>
-        <Pressable style={styles.roundButton} onPress={() => void player.skipForward(30)}><Text style={styles.controlIcon}>↻</Text></Pressable>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.eyebrow}>Now Playing</Text>
+      <Image source={{ uri: activeBook.coverUrl ?? 'https://placehold.co/480x640/111827/D6A84F/png?text=BookDrive' }} style={styles.cover} />
+      <Text style={styles.title} numberOfLines={2}>{activeBook.title}</Text>
+      <Text style={styles.author}>{activeBook.author}</Text>
+      <Text style={styles.chapter}>{activeBook.currentChapter}</Text>
+
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
-      <Text style={styles.speed}>{book.speed}x · {book.voice}</Text>
-      <Pressable onPress={() => void audioService.savePosition(book.id)}><Text style={styles.save}>Save position</Text></Pressable>
-    </View>
+      <View style={styles.timeRow}>
+        <Text style={styles.time}>{formatTime(positionMillis)}</Text>
+        <Text style={styles.time}>{formatTime(duration)}</Text>
+      </View>
+
+      <View style={styles.controls}>
+        <Pressable style={styles.smallControl} onPress={() => void seekBy(-30000)}><Text style={styles.smallControlText}>−30</Text></Pressable>
+        <Pressable style={styles.playButton} onPress={() => void handlePlay()}><Text style={styles.playText}>{isPlaying ? 'Ⅱ' : '▶'}</Text></Pressable>
+        <Pressable style={styles.smallControl} onPress={() => void seekBy(30000)}><Text style={styles.smallControlText}>+30</Text></Pressable>
+      </View>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.placeholderRow}>
+        <Pressable style={styles.placeholderButton}><Text style={styles.placeholderText}>Speed {activeBook.speed}x</Text></Pressable>
+        <Pressable style={styles.placeholderButton}><Text style={styles.placeholderText}>Voice {activeBook.voice}</Text></Pressable>
+        <Pressable style={styles.placeholderButton}><Text style={styles.placeholderText}>Car mode</Text></Pressable>
+      </View>
+
+      <View style={styles.voiceCard}>
+        <VoiceSelector
+          selectedVoice={activeBook.voice}
+          selectedSpeed={activeBook.speed}
+          onVoiceChange={(voice) => void setVoiceAndSpeed(activeBook.id, voice, activeBook.speed)}
+          onSpeedChange={(speed) => void setVoiceAndSpeed(activeBook.id, activeBook.voice, speed)}
+        />
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: 'center', padding: 22, backgroundColor: colors.background },
-  drivingButton: { alignSelf: 'flex-end', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
-  drivingText: { color: colors.accent, fontWeight: '800' },
-  cover: { width: 220, height: 330, borderRadius: 26, marginTop: 28, backgroundColor: colors.card },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 30, textAlign: 'center', marginTop: 24 },
-  chapter: { color: colors.textMuted, marginTop: 8 },
-  progressTrack: { width: '100%', height: 8, backgroundColor: colors.card, borderRadius: 99, overflow: 'hidden', marginTop: 34 },
-  progressFill: { height: '100%', backgroundColor: colors.accent },
-  controls: { flexDirection: 'row', alignItems: 'center', gap: 24, marginTop: 34 },
-  roundButton: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card },
-  playButton: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
-  speed: { color: colors.textMuted, marginTop: 18, textTransform: 'capitalize' },
-  save: { color: colors.accent, marginTop: 22 },
-  controlIcon: { color: colors.text, fontSize: 32, fontWeight: '800' },
-  playIcon: { color: colors.background, fontSize: 42, fontWeight: '900' }
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.xl, paddingBottom: 170, alignItems: 'center' },
+  emptyScreen: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  eyebrow: { alignSelf: 'flex-start', color: colors.primary, fontSize: typography.caption, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '900' },
+  cover: { width: 250, height: 330, borderRadius: radii.xl, backgroundColor: colors.surfaceMuted, marginTop: spacing.xl },
+  title: { color: colors.text, fontSize: typography.heading, fontWeight: '900', textAlign: 'center', marginTop: spacing.xl, lineHeight: 30 },
+  subtitle: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.md, lineHeight: 22 },
+  author: { color: colors.textMuted, fontSize: typography.body, marginTop: spacing.sm },
+  chapter: { color: colors.primary, fontSize: typography.caption, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2, marginTop: spacing.md },
+  progressTrack: { width: '100%', height: 8, backgroundColor: colors.surfaceMuted, borderRadius: radii.pill, overflow: 'hidden', marginTop: spacing.xl },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
+  timeRow: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
+  time: { color: colors.textSubtle, fontSize: 12, fontWeight: '700' },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xl, marginTop: spacing.xl },
+  smallControl: { width: 68, height: 58, borderRadius: radii.lg, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  smallControlText: { color: colors.text, fontSize: 18, fontWeight: '900' },
+  playButton: { width: 92, height: 92, borderRadius: 46, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  playText: { color: colors.background, fontSize: 42, fontWeight: '900' },
+  error: { color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
+  placeholderRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center', marginTop: spacing.xl },
+  placeholderButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  placeholderText: { color: colors.textMuted, fontWeight: '800', textTransform: 'capitalize' },
+  voiceCard: { width: '100%', backgroundColor: colors.surface, borderRadius: radii.xl, borderColor: colors.border, borderWidth: 1, padding: spacing.lg, marginTop: spacing.xl }
 });

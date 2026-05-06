@@ -4,15 +4,14 @@ import { create } from 'zustand';
 import { Book, BookSearchResult, TtsVoice } from '../types';
 import { demoBooks } from './demoBooks';
 
-const LIBRARY_KEY = 'bookdrive:library';
+const LIBRARY_KEY = 'bookdrive:library:v2';
 
 type LibraryState = {
   books: Book[];
   isHydrated: boolean;
   hydrate: () => Promise<void>;
-  addBook: (result: BookSearchResult, pdfUrl?: string | null) => Promise<Book>;
+  addBook: (result: BookSearchResult) => Promise<Book>;
   updateBook: (bookId: string, patch: Partial<Book>) => Promise<void>;
-  setBookPDF: (bookId: string, pdfUrl: string | null, pdfLocalPath?: string | null) => Promise<void>;
   setVoiceAndSpeed: (bookId: string, voice: TtsVoice, speed: number) => Promise<void>;
   getBookById: (bookId: string) => Book | undefined;
   seedDemoLibrary: () => Promise<void>;
@@ -23,24 +22,35 @@ const persist = async (books: Book[]): Promise<void> => {
   await AsyncStorage.setItem(LIBRARY_KEY, JSON.stringify(books));
 };
 
+const withFreshDemoDates = (): Book[] => demoBooks.map((book) => ({ ...book, dateAdded: new Date().toISOString() }));
+
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   books: [],
   isHydrated: false,
 
   hydrate: async () => {
     const raw = await AsyncStorage.getItem(LIBRARY_KEY);
-    const books = raw ? (JSON.parse(raw) as Book[]) : [];
+    const books = raw ? (JSON.parse(raw) as Book[]) : withFreshDemoDates();
     set({ books, isHydrated: true });
+    if (!raw) {
+      await persist(books);
+    }
   },
 
-  addBook: async (result, pdfUrl = null) => {
+  addBook: async (result) => {
     const book: Book = {
-      ...result,
-      pdfUrl,
-      pdfLocalPath: null,
-      progress: 0,
-      currentChunkIndex: 0,
+      id: result.id,
+      title: result.title,
+      author: result.author,
+      coverUrl: result.coverUrl,
+      description: result.description,
       status: 'reading',
+      progress: 0,
+      audioUrl: null,
+      duration: 0,
+      estimatedListeningTime: 'Needs audio',
+      sourceType: 'pdf',
+      currentChapter: 'Awaiting import',
       voice: 'alloy',
       speed: 1,
       dateAdded: new Date().toISOString()
@@ -57,10 +67,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     await persist(books);
   },
 
-  setBookPDF: async (bookId, pdfUrl, pdfLocalPath = null) => {
-    await get().updateBook(bookId, { pdfUrl, pdfLocalPath });
-  },
-
   setVoiceAndSpeed: async (bookId, voice, speed) => {
     await get().updateBook(bookId, { voice, speed });
   },
@@ -69,9 +75,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   seedDemoLibrary: async () => {
     const currentBooks = get().books;
+    const seededBooks = withFreshDemoDates();
     const mergedBooks = [
-      ...demoBooks.map((book) => ({ ...book, dateAdded: new Date().toISOString() })),
-      ...currentBooks.filter((book) => !demoBooks.some((demoBook) => demoBook.id === book.id))
+      ...seededBooks,
+      ...currentBooks.filter((book) => !seededBooks.some((demoBook) => demoBook.id === book.id))
     ];
     set({ books: mergedBooks });
     await persist(mergedBooks);

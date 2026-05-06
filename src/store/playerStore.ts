@@ -1,48 +1,101 @@
 import { create } from 'zustand';
 
 import { audioService } from '../services/audioService';
+import { AudioTrack, Book } from '../types';
 
 type PlayerState = {
-  activeBookId: string | null;
+  activeBook: Book | null;
   isPlaying: boolean;
-  chunkUris: string[];
-  setActiveBook: (bookId: string, chunkUris: string[]) => Promise<void>;
+  isLoaded: boolean;
+  positionMillis: number;
+  durationMillis: number;
+  error: string | null;
+  loadBook: (book: Book, autoplay?: boolean) => Promise<void>;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   toggle: () => Promise<void>;
-  skipForward: (seconds: number) => Promise<void>;
-  skipBack: (seconds: number) => Promise<void>;
+  seekBy: (deltaMillis: number) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
-  activeBookId: null,
-  isPlaying: false,
-  chunkUris: [],
+const toTrack = (book: Book): AudioTrack | null => {
+  if (!book.audioUrl) {
+    return null;
+  }
 
-  setActiveBook: async (bookId, chunkUris) => {
-    await audioService.loadChunks(chunkUris, bookId);
-    await audioService.restorePosition(bookId);
-    set({ activeBookId: bookId, chunkUris });
-  },
+  return {
+    id: book.id,
+    title: book.title,
+    author: book.author,
+    audioUrl: book.audioUrl,
+    artwork: book.coverUrl,
+    duration: book.duration,
+    isDemo: book.sourceType === 'demo'
+  };
+};
 
-  play: async () => {
-    await audioService.play();
-    set({ isPlaying: true });
-  },
+export const usePlayerStore = create<PlayerState>((set, get) => {
+  audioService.subscribe((status) => {
+    set({
+      isPlaying: status.isPlaying,
+      isLoaded: status.isLoaded,
+      positionMillis: status.positionMillis,
+      durationMillis: status.durationMillis,
+      error: status.error
+    });
+  });
 
-  pause: async () => {
-    await audioService.pause();
-    set({ isPlaying: false });
-  },
+  return {
+    activeBook: null,
+    isPlaying: false,
+    isLoaded: false,
+    positionMillis: 0,
+    durationMillis: 0,
+    error: null,
 
-  toggle: async () => {
-    if (get().isPlaying) {
-      await get().pause();
-      return;
+    loadBook: async (book, autoplay = true) => {
+      const track = toTrack(book);
+      if (!track) {
+        set({ activeBook: book, error: 'Demo audio has not been generated for this book yet.', isPlaying: false });
+        return;
+      }
+
+      set({ activeBook: book, error: null });
+      await audioService.loadTrack(track);
+      if (autoplay) {
+        await audioService.play();
+      }
+    },
+
+    play: async () => {
+      await audioService.play();
+    },
+
+    pause: async () => {
+      await audioService.pause();
+    },
+
+    toggle: async () => {
+      const { activeBook } = get();
+      if (!activeBook) {
+        return;
+      }
+
+      if (!get().isLoaded) {
+        await get().loadBook(activeBook, true);
+        return;
+      }
+
+      await audioService.toggle();
+    },
+
+    seekBy: async (deltaMillis) => {
+      await audioService.seekBy(deltaMillis);
+    },
+
+    clear: async () => {
+      await audioService.unload();
+      set({ activeBook: null, isPlaying: false, isLoaded: false, positionMillis: 0, durationMillis: 0, error: null });
     }
-    await get().play();
-  },
-
-  skipForward: async (seconds) => audioService.skipForward(seconds),
-  skipBack: async (seconds) => audioService.skipBack(seconds)
-}));
+  };
+});

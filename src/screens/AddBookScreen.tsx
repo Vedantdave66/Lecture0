@@ -1,107 +1,99 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { findPDF } from '../services/pdfFinderService';
-import { searchByImage, searchByQuery } from '../services/googleBooksService';
 import { useLibraryStore } from '../store/libraryStore';
-import { colors, typography } from '../theme/colors';
-import { BookSearchResult, RootStackParamList } from '../types';
+import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'AddBook'>;
+type ImportOption = {
+  title: string;
+  subtitle: string;
+  icon: string;
+};
 
-export const AddBookScreen = ({ navigation }: Props) => {
+const options: ImportOption[] = [
+  { title: 'Import PDF', subtitle: 'Choose a document and prepare it for AI narration. Demo mode only for now.', icon: '＋' },
+  { title: 'Scan pages with camera', subtitle: 'Capture pages or covers. Camera preview is available; extraction comes later.', icon: '▣' },
+  { title: 'Paste file link', subtitle: 'Add a public file URL when generation is connected.', icon: '↗' }
+];
+
+export const AddBookScreen = () => {
   const [permission, requestPermission] = useCameraPermissions();
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<BookSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const addBook = useLibraryStore((state) => state.addBook);
-  const setBookPDF = useLibraryStore((state) => state.setBookPDF);
+  const [link, setLink] = useState('');
+  const seedDemoLibrary = useLibraryStore((state) => state.seedDemoLibrary);
 
-  const runSearch = async () => {
-    if (!query.trim()) {
-      return;
-    }
-    setIsSearching(true);
-    try {
-      setResults(await searchByQuery(query));
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const scanPlaceholder = async () => {
-    if (!permission?.granted) {
-      await requestPermission();
-      return;
-    }
-    setIsSearching(true);
-    try {
-      setResults(await searchByImage('TODO_CAPTURED_BOOK_COVER_BASE64'));
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const confirmBook = async (result: BookSearchResult) => {
-    Alert.alert('Looking for PDF…');
-    const book = await addBook(result, null);
-    navigation.navigate('BookDetail', { bookId: book.id });
-    void findPDF(result.title, result.author).then((pdfUrl) => {
-      void setBookPDF(book.id, pdfUrl);
-      Alert.alert(pdfUrl ? 'PDF found!' : 'Upload your own PDF');
-    });
+  const handleComingSoon = (title: string) => {
+    Alert.alert(title, 'AI narration generation is coming soon. For now, use the demo library to test playback and UI.');
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add a book</Text>
-      <View style={styles.cameraShell}>
-        {permission?.granted ? <CameraView style={styles.camera} facing="back" /> : <Text style={styles.cameraText}>Camera scan uses expo-camera to capture a cover.</Text>}
+      <Text style={styles.eyebrow}>Add Book</Text>
+      <Text style={styles.title}>Import or scan</Text>
+      <Text style={styles.subtitle}>BookDrive will turn your PDFs and books into AI-ready audiobooks. This build focuses on the premium flow and demo playback.</Text>
+
+      <View style={styles.optionsGrid}>
+        {options.map((option) => (
+          <Pressable key={option.title} style={styles.optionCard} onPress={() => handleComingSoon(option.title)}>
+            <Text style={styles.optionIcon}>{option.icon}</Text>
+            <View style={styles.optionCopy}>
+              <Text style={styles.optionTitle}>{option.title}</Text>
+              <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+            </View>
+          </Pressable>
+        ))}
       </View>
-      <Pressable style={styles.primaryButton} onPress={() => void scanPlaceholder()}>
-        <Text style={styles.primaryText}>{permission?.granted ? 'Scan cover' : 'Enable camera'}</Text>
-      </Pressable>
-      <Text style={styles.or}>or search manually</Text>
-      <View style={styles.searchRow}>
-        <TextInput value={query} onChangeText={setQuery} placeholder="Title and author" placeholderTextColor={colors.textMuted} style={styles.input} />
-        <Pressable style={styles.searchButton} onPress={() => void runSearch()}><Text style={styles.searchText}>Search</Text></Pressable>
-      </View>
-      {isSearching ? <ActivityIndicator color={colors.accent} style={styles.loader} /> : null}
-      {results.map((result) => (
-        <Pressable key={result.id} style={styles.result} onPress={() => void confirmBook(result)}>
-          <Image source={{ uri: result.coverUrl || 'https://placehold.co/120x180/13131A/E8C547/png?text=Book' }} style={styles.cover} />
-          <View style={styles.resultText}>
-            <Text style={styles.resultTitle}>{result.title}</Text>
-            <Text style={styles.author}>{result.author}</Text>
-            <Text style={styles.confirm}>Tap to confirm</Text>
-          </View>
+
+      <View style={styles.cameraCard}>
+        <Text style={styles.cardTitle}>Camera scan preview</Text>
+        <Text style={styles.cardText}>Use this preview to validate camera permission and layout before OCR/generation is built.</Text>
+        <View style={styles.cameraShell}>
+          {permission?.granted ? <CameraView style={styles.camera} facing="back" /> : <Text style={styles.cameraText}>Camera permission is needed for scan preview.</Text>}
+        </View>
+        <Pressable style={styles.secondaryButton} onPress={() => void requestPermission()}>
+          <Text style={styles.secondaryText}>{permission?.granted ? 'Camera enabled' : 'Enable camera'}</Text>
         </Pressable>
-      ))}
+      </View>
+
+      <View style={styles.linkCard}>
+        <Text style={styles.cardTitle}>Paste file link</Text>
+        <TextInput value={link} onChangeText={setLink} placeholder="https://example.com/my-book.pdf" placeholderTextColor={colors.textSubtle} style={styles.input} />
+        <Pressable style={styles.primaryButton} onPress={() => handleComingSoon('File link saved')}>
+          <Text style={styles.primaryText}>Save link placeholder</Text>
+        </Pressable>
+      </View>
+
+      <Pressable style={styles.demoButton} onPress={() => void seedDemoLibrary()}>
+        <Text style={styles.demoText}>Load demo audiobooks</Text>
+      </Pressable>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 60 },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 36, marginBottom: 18 },
-  cameraShell: { height: 260, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { padding: spacing.xl, paddingBottom: 170 },
+  eyebrow: { color: colors.primary, fontSize: typography.caption, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '800' },
+  title: { color: colors.text, fontSize: typography.title, fontWeight: '900', marginTop: spacing.xs },
+  subtitle: { color: colors.textMuted, fontSize: typography.body, lineHeight: 23, marginTop: spacing.md, marginBottom: spacing.xl },
+  optionsGrid: { gap: spacing.md },
+  optionCard: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radii.lg, borderColor: colors.border, borderWidth: 1, padding: spacing.lg, ...shadows.card },
+  optionIcon: { color: colors.primary, fontSize: 30, fontWeight: '900', width: 40, textAlign: 'center' },
+  optionCopy: { flex: 1 },
+  optionTitle: { color: colors.text, fontSize: typography.subheading, fontWeight: '900' },
+  optionSubtitle: { color: colors.textMuted, marginTop: spacing.xs, lineHeight: 21 },
+  cameraCard: { backgroundColor: colors.surfaceElevated, borderRadius: radii.xl, borderColor: colors.border, borderWidth: 1, padding: spacing.lg, marginTop: spacing.xl },
+  cardTitle: { color: colors.text, fontSize: typography.subheading, fontWeight: '900' },
+  cardText: { color: colors.textMuted, marginTop: spacing.xs, lineHeight: 21 },
+  cameraShell: { height: 220, borderRadius: radii.lg, overflow: 'hidden', backgroundColor: colors.surfaceMuted, marginTop: spacing.lg, alignItems: 'center', justifyContent: 'center' },
   camera: { width: '100%', height: '100%' },
-  cameraText: { color: colors.textMuted, padding: 24, textAlign: 'center' },
-  primaryButton: { backgroundColor: colors.accent, padding: 16, borderRadius: 18, alignItems: 'center', marginTop: 14 },
-  primaryText: { color: colors.background, fontWeight: '800', fontSize: 16 },
-  or: { color: colors.textMuted, textAlign: 'center', marginVertical: 20 },
-  searchRow: { flexDirection: 'row', gap: 10 },
-  input: { flex: 1, backgroundColor: colors.card, color: colors.text, borderRadius: 16, paddingHorizontal: 14, borderColor: colors.border, borderWidth: 1 },
-  searchButton: { backgroundColor: colors.cardElevated, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 18, borderColor: colors.border, borderWidth: 1 },
-  searchText: { color: colors.accent, fontWeight: '700' },
-  loader: { marginTop: 24 },
-  result: { flexDirection: 'row', backgroundColor: colors.card, padding: 12, borderRadius: 18, marginTop: 16, borderColor: colors.border, borderWidth: 1 },
-  cover: { width: 72, height: 108, borderRadius: 10, backgroundColor: colors.cardElevated },
-  resultText: { flex: 1, marginLeft: 14, justifyContent: 'center' },
-  resultTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  author: { color: colors.textMuted, marginTop: 4 },
-  confirm: { color: colors.accent, marginTop: 10, fontWeight: '700' }
+  cameraText: { color: colors.textMuted, padding: spacing.lg, textAlign: 'center' },
+  secondaryButton: { marginTop: spacing.lg, borderColor: colors.primary, borderWidth: 1, borderRadius: radii.pill, padding: spacing.md, alignItems: 'center' },
+  secondaryText: { color: colors.primary, fontWeight: '900' },
+  linkCard: { backgroundColor: colors.surface, borderRadius: radii.xl, borderColor: colors.border, borderWidth: 1, padding: spacing.lg, marginTop: spacing.xl },
+  input: { backgroundColor: colors.backgroundSoft, borderColor: colors.border, borderWidth: 1, borderRadius: radii.lg, color: colors.text, padding: spacing.lg, marginTop: spacing.lg },
+  primaryButton: { backgroundColor: colors.primary, borderRadius: radii.pill, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg },
+  primaryText: { color: colors.background, fontWeight: '900' },
+  demoButton: { backgroundColor: colors.surfaceElevated, borderColor: colors.primary, borderWidth: 1, borderRadius: radii.pill, padding: spacing.lg, alignItems: 'center', marginTop: spacing.xl },
+  demoText: { color: colors.primary, fontWeight: '900' }
 });
