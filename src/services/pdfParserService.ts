@@ -1,4 +1,5 @@
 const CHUNK_SIZE = 3000;
+const CORS_PROXY_PREFIX = 'https://corsproxy.io/?';
 
 const splitIntoChunks = (text: string): string[] => {
   const sentences = text.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [text];
@@ -21,13 +22,80 @@ const splitIntoChunks = (text: string): string[] => {
   return chunks;
 };
 
+const withCorsProxy = (url: string): string => `${CORS_PROXY_PREFIX}${url}`;
+
+const isGutenbergFileUrl = (url: string): boolean => /gutenberg\.org\/files\/\d+\//i.test(url);
+
+const getGutenbergId = (url: string): string | null => url.match(/gutenberg\.org\/files\/(\d+)\//i)?.[1] ?? null;
+
+const getPlainTextCandidates = (url: string): string[] => {
+  const gutenbergId = getGutenbergId(url);
+  if (!gutenbergId) {
+    return [];
+  }
+
+  const base = `https://www.gutenberg.org/files/${gutenbergId}`;
+  return [
+    `${base}/${gutenbergId}-0.txt`,
+    `${base}/${gutenbergId}.txt`,
+    `${base}/${gutenbergId}-8.txt`
+  ];
+};
+
+const fetchText = async (url: string): Promise<string> => {
+  console.log('[BookDrivePDF] fetching text source', url);
+  const response = await fetch(withCorsProxy(url));
+  if (!response.ok) {
+    throw new Error(`Unable to download PDF/text for extraction: ${response.status}`);
+  }
+  return response.text();
+};
+
+const stripGutenbergBoilerplate = (text: string): string => {
+  const startPatterns = [
+    /\*\*\* START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK .*?\*\*\*/i,
+    /\*\*\* START OF THIS PROJECT GUTENBERG EBOOK .*?\*\*\*/i
+  ];
+  const endPatterns = [
+    /\*\*\* END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK .*?\*\*\*/i,
+    /\*\*\* END OF THIS PROJECT GUTENBERG EBOOK .*?\*\*\*/i
+  ];
+
+  let cleaned = text;
+  const startMatch = startPatterns.map((pattern) => pattern.exec(cleaned)).find(Boolean);
+  if (startMatch?.index !== undefined) {
+    cleaned = cleaned.slice(startMatch.index + startMatch[0].length);
+  }
+
+  const endMatch = endPatterns.map((pattern) => pattern.exec(cleaned)).find(Boolean);
+  if (endMatch?.index !== undefined) {
+    cleaned = cleaned.slice(0, endMatch.index);
+  }
+
+  return cleaned.trim();
+};
+
 export const extractTextFromPDF = async (pdfUrl: string): Promise<string[]> => {
-  // TODO: Wire a real Expo-compatible PDF text extraction path after the generation backend is scoped.
-  console.log('[BookDrivePDF] demo text extraction used', pdfUrl);
-  const demoText = [
-    'Welcome to BookDrive. This short generated narration demonstrates the complete listening pipeline for imported books.',
-    'The app finds a demo PDF reference, prepares readable chunks, sends each chunk to text to speech, caches the resulting audio, and plays the chunks in order.',
-    'Future releases will replace this placeholder with real public-domain PDF extraction and richer chapter detection.'
-  ].join(' ');
-  return splitIntoChunks(demoText.repeat(8));
+  const candidates = [
+    ...(isGutenbergFileUrl(pdfUrl) && !pdfUrl.endsWith('.txt') ? getPlainTextCandidates(pdfUrl) : []),
+    pdfUrl
+  ];
+
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      const rawText = await fetchText(candidate);
+      const cleanedText = stripGutenbergBoilerplate(rawText);
+      const chunks = splitIntoChunks(cleanedText);
+      if (chunks.length > 0) {
+        console.log('[BookDrivePDF] extracted text chunks', { chunks: chunks.length, source: candidate });
+        return chunks;
+      }
+    } catch (error) {
+      lastError = error;
+      console.log('[BookDrivePDF] source failed', candidate, error instanceof Error ? error.message : error);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Unable to download PDF for text extraction.');
 };
