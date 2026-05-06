@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { VoiceSelector } from '../components/VoiceSelector';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePlayerStore } from '../store/playerStore';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { colors, radii, spacing, typography } from '../theme/colors';
 
 const formatTime = (millis: number): string => {
   const totalSeconds = Math.max(0, Math.floor(millis / 1000));
@@ -20,6 +20,9 @@ export const PlayerScreen = () => {
   const positionMillis = usePlayerStore((state) => state.positionMillis);
   const durationMillis = usePlayerStore((state) => state.durationMillis);
   const error = usePlayerStore((state) => state.error);
+  const isPreparing = usePlayerStore((state) => state.isPreparing);
+  const activeChunkIndex = usePlayerStore((state) => state.activeChunkIndex);
+  const totalChunks = usePlayerStore((state) => state.totalChunks);
   const loadBook = usePlayerStore((state) => state.loadBook);
   const toggle = usePlayerStore((state) => state.toggle);
   const seekBy = usePlayerStore((state) => state.seekBy);
@@ -62,10 +65,12 @@ export const PlayerScreen = () => {
 
       <View style={styles.controls}>
         <Pressable style={styles.smallControl} onPress={() => void seekBy(-30000)}><Text style={styles.smallControlText}>−30</Text></Pressable>
-        <Pressable style={styles.playButton} onPress={() => void handlePlay()}><Text style={styles.playText}>{isPlaying ? 'Ⅱ' : '▶'}</Text></Pressable>
+        <Pressable style={styles.playButton} onPress={() => void handlePlay()} disabled={isPreparing}>{isPreparing ? <Text style={styles.playText}>…</Text> : <Text style={styles.playText}>{isPlaying ? 'Ⅱ' : '▶'}</Text>}</Pressable>
         <Pressable style={styles.smallControl} onPress={() => void seekBy(30000)}><Text style={styles.smallControlText}>+30</Text></Pressable>
       </View>
 
+      {isPreparing ? <Text style={styles.preparing}>Generating first audio chunk…</Text> : null}
+      {totalChunks > 0 ? <Text style={styles.chunkText}>Chunk {activeChunkIndex + 1} of {totalChunks}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.placeholderRow}>
@@ -105,6 +110,8 @@ const styles = StyleSheet.create({
   smallControlText: { color: colors.text, fontSize: 18, fontWeight: '900' },
   playButton: { width: 92, height: 92, borderRadius: 46, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   playText: { color: colors.background, fontSize: 42, fontWeight: '900' },
+  preparing: { color: colors.primary, textAlign: 'center', marginTop: spacing.lg, fontWeight: '900' },
+  chunkText: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
   error: { color: colors.danger, textAlign: 'center', marginTop: spacing.lg },
   placeholderRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, justifyContent: 'center', marginTop: spacing.xl },
   placeholderButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radii.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },

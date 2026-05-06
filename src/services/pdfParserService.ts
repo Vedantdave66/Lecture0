@@ -22,7 +22,12 @@ const splitIntoChunks = (text: string): string[] => {
 };
 
 export const extractTextFromPDF = async (pdfUrl: string): Promise<string[]> => {
-  console.log('[BookDrivePDF] text extraction disabled in demo mode', pdfUrl);
-  const placeholderText = 'AI narration generation is coming soon. This placeholder keeps PDF chunking UI-ready without fetching or parsing external files.';
-  return splitIntoChunks(placeholderText.repeat(40));
+  // TODO: Wire a real Expo-compatible PDF text extraction path after the generation backend is scoped.
+  console.log('[BookDrivePDF] demo text extraction used', pdfUrl);
+  const demoText = [
+    'Welcome to BookDrive. This short generated narration demonstrates the complete listening pipeline for imported books.',
+    'The app finds a demo PDF reference, prepares readable chunks, sends each chunk to text to speech, caches the resulting audio, and plays the chunks in order.',
+    'Future releases will replace this placeholder with real public-domain PDF extraction and richer chapter detection.'
+  ].join(' ');
+  return splitIntoChunks(demoText.repeat(8));
 };

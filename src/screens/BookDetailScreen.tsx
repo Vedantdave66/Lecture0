@@ -1,9 +1,9 @@
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { VoiceSelector } from '../components/VoiceSelector';
 import { useLibraryStore } from '../store/libraryStore';
 import { usePlayerStore } from '../store/playerStore';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { colors, radii, spacing, typography } from '../theme/colors';
 import { Book, TtsVoice } from '../types';
 
 type Props = {
@@ -15,9 +15,13 @@ type Props = {
 export const BookDetailScreen = ({ book, onClose, onPlay }: Props) => {
   const setVoiceAndSpeed = useLibraryStore((state) => state.setVoiceAndSpeed);
   const loadBook = usePlayerStore((state) => state.loadBook);
+  const generateAndPlayBook = usePlayerStore((state) => state.generateAndPlayBook);
+  const isPreparing = usePlayerStore((state) => state.isPreparing);
+  const error = usePlayerStore((state) => state.error);
 
-  const handleGenerate = () => {
-    Alert.alert('AI narration coming soon', 'This demo only wires playback for safe public sample audio. Generation UI is staged for the next backend milestone.');
+  const handleGenerate = async () => {
+    await generateAndPlayBook(book);
+    onPlay();
   };
 
   const handlePlay = async () => {
@@ -43,8 +47,9 @@ export const BookDetailScreen = ({ book, onClose, onPlay }: Props) => {
         onVoiceChange={(voice: TtsVoice) => void setVoiceAndSpeed(book.id, voice, book.speed)}
         onSpeedChange={(speed) => void setVoiceAndSpeed(book.id, book.voice, speed)}
       />
-      <Pressable style={[styles.primaryButton, !book.audioUrl && styles.disabledButton]} onPress={() => (book.audioUrl ? void handlePlay() : handleGenerate())}>
-        <Text style={styles.primaryText}>{book.audioUrl ? 'Play audiobook' : 'Generate audio soon'}</Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Pressable style={[styles.primaryButton, isPreparing && styles.disabledButton]} onPress={() => (book.audioUrl ? void handlePlay() : void handleGenerate())} disabled={isPreparing}>
+        {isPreparing ? <ActivityIndicator color={colors.background} /> : <Text style={styles.primaryText}>{book.audioUrl ? 'Play audiobook' : 'Generate and play'}</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -65,5 +70,6 @@ const styles = StyleSheet.create({
   metaValue: { color: colors.text, fontSize: typography.subheading, fontWeight: '900', marginTop: spacing.xs },
   primaryButton: { backgroundColor: colors.primary, borderRadius: radii.pill, padding: spacing.lg, alignItems: 'center', marginTop: spacing.lg },
   disabledButton: { backgroundColor: colors.surfaceElevated, borderColor: colors.primary, borderWidth: 1 },
-  primaryText: { color: colors.background, fontWeight: '900' }
+  primaryText: { color: colors.background, fontWeight: '900' },
+  error: { color: colors.danger, marginTop: spacing.md, textAlign: 'center' }
 });

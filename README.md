@@ -6,7 +6,7 @@ BookDrive is an Expo-managed React Native + TypeScript MVP for a premium AI audi
 
 ## What this build focuses on
 
-- Reliable demo audio playback with `expo-av` and iOS silent-mode support.
+- Reliable demo audio playback with `expo-audio` and iOS silent-mode support.
 - A polished mobile-first dark UI with Home, Library, Add, and Now Playing tabs.
 - Clean mock audiobook data that avoids copyrighted book content.
 - A mini-player that appears only after a track is active and sits above the bottom nav.
@@ -14,7 +14,7 @@ BookDrive is an Expo-managed React Native + TypeScript MVP for a premium AI audi
 
 ## Expo Go compatibility
 
-This project intentionally sticks to Expo-compatible libraries. The runtime dependency surface is limited to `expo-av`, `expo-file-system`, `expo-camera`, `@react-navigation`, `zustand`, and `@react-native-async-storage/async-storage` plus React/React Native/Expo.
+This project intentionally sticks to Expo-compatible libraries. The runtime dependency surface is limited to `expo-audio`, `expo-file-system`, `expo-camera`, `@react-navigation`, `zustand`, and `@react-native-async-storage/async-storage` plus React/React Native/Expo.
 
 ## Setup
 
