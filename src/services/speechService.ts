@@ -66,5 +66,23 @@ export const stopSpeech = async (): Promise<void> => {
   }
 };
 
+/** Pause speech (iOS only). On Android, use stopSpeech + restart. */
+export const pauseSpeech = async (): Promise<void> => {
+  try {
+    await Speech.pause();
+  } catch {
+    await stopSpeech();
+  }
+};
+
+/** Resume paused speech (iOS only). */
+export const resumeSpeech = async (): Promise<void> => {
+  try {
+    await Speech.resume();
+  } catch {
+    // Resume not supported — caller should restart chunk
+  }
+};
+
 /** Returns true if device TTS is currently speaking. */
 export const isSpeaking = (): Promise<boolean> => Speech.isSpeakingAsync();
