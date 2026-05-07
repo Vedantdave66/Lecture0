@@ -1,17 +1,21 @@
+// Light editorial theme — white/yellow brand identity
 export const colors = {
-  background: '#0A0A0F',
-  card: '#13131A',
-  cardElevated: '#1B1B25',
-  accent: '#E8C547',
-  accentMuted: '#8A752A',
-  text: '#F6F1E7',
-  textMuted: '#A9A4B0',
-  border: '#2A2A36',
-  danger: '#EF6F6C',
-  success: '#67D391'
+  background:   '#F8F8F5',
+  card:         '#FFFFFF',
+  cardElevated: '#F4F4F1',
+  accent:       '#FFC107',
+  accentDark:   '#E5A800',
+  accentLight:  '#FFF8E1',
+  text:         '#111111',
+  textMuted:    '#888888',
+  textLight:    '#BBBBBB',
+  border:       '#EEEEEA',
+  danger:       '#D94F4F',
+  success:      '#2E9E5B',
+  white:        '#FFFFFF',
 } as const;
 
 export const typography = {
   titleFont: 'Georgia',
-  bodyFont: 'System'
+  bodyFont:  'System',
 } as const;

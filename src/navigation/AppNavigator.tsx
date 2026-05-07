@@ -38,9 +38,14 @@ const NowPlayingTab = () => {
   const book = useLibraryStore((state) => state.books.find((item) => item.id === activeBookId));
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', backgroundColor: colors.background }}>
-      <Text style={{ color: colors.textMuted, textAlign: 'center', marginBottom: 12 }}>Persistent mini player</Text>
-      <AudioPlayer title={book?.title} />
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, padding: 24 }}>
+      <Text style={{ fontSize: 48, marginBottom: 12 }}>🎧</Text>
+      <Text style={{ fontFamily: 'Georgia', fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
+        {book?.title ?? 'Nothing playing'}
+      </Text>
+      <Text style={{ fontSize: 14, color: colors.textMuted }}>
+        {book ? 'Open the Player to continue.' : 'Go to your library to start listening.'}
+      </Text>
     </View>
   );
 };
@@ -49,10 +54,19 @@ const MainTabs = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, height: 82, paddingBottom: 18, paddingTop: 10 },
+      tabBarStyle: {
+        backgroundColor: colors.card,
+        borderTopColor: colors.border,
+        borderTopWidth: 1,
+        height: 82,
+        paddingBottom: 18,
+        paddingTop: 10,
+      },
       tabBarActiveTintColor: colors.accent,
       tabBarInactiveTintColor: colors.textMuted,
-      tabBarIcon: ({ color, size }) => <Ionicons name={route.name === 'LibraryTab' ? 'library' : 'musical-notes'} color={color} size={size} />
+      tabBarIcon: ({ color, size }) => (
+        <Ionicons name={route.name === 'LibraryTab' ? 'library' : 'headset'} color={color} size={size} />
+      ),
     })}
   >
     <Tab.Screen name="LibraryTab" component={LibraryScreen} options={{ title: 'Library' }} />
@@ -66,15 +80,21 @@ type AppNavigatorProps = {
 
 export const AppNavigator = ({ navRef }: AppNavigatorProps) => (
   <NavigationContainer theme={theme} ref={navRef}>
-    <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, contentStyle: { backgroundColor: colors.background } }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.card },
+        headerTintColor: colors.text,
+        headerTitleStyle: { fontFamily: 'Georgia', fontWeight: '700', color: colors.text },
+        headerShadowVisible: true,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
       <Stack.Screen name="ApiKey" component={ApiKeyScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AddBook" component={AddBookScreen} options={{ title: 'Add Book' }} />
-      <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: 'Book Details' }} />
+      <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
       <Stack.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />
       <Stack.Screen name="DrivingMode" component={DrivingModeScreen} options={{ headerShown: false, presentation: 'fullScreenModal' }} />
     </Stack.Navigator>
-    <TextureOverlay />
-    <AudioPlayer />
   </NavigationContainer>
 );

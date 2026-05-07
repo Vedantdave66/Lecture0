@@ -1,9 +1,13 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { PrimaryButton } from '../components/PrimaryButton';
+import { SourceBadge } from '../components/SourceBadge';
+import { WarningCard } from '../components/WarningCard';
 import { VoiceSelector } from '../components/VoiceSelector';
 import { useLibraryStore } from '../store/libraryStore';
 import { colors, typography } from '../theme/colors';
+import { cardShadows, radius, spacing } from '../theme/theme';
 import { RootStackParamList, TtsVoice } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookDetail'>;
@@ -16,46 +20,59 @@ export const BookDetailScreen = ({ navigation, route }: Props) => {
     return <View style={styles.screen}><Text style={styles.missing}>Book not found.</Text></View>;
   }
 
-  const sourceBadge = book.sourceType === 'upload' ? '📁 Uploaded file' : '🌐 Project Gutenberg';
   const hasText = !!(book.textCacheUri ?? book.textUrl ?? book.fileUri);
+  const pct = Math.round(book.progress * 100);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* Cover card */}
+      <View style={[styles.coverCard, cardShadows.medium]}>
+        <Image
+          source={{ uri: book.coverUrl || 'https://placehold.co/240x360/FFC107/FFFFFF/png?text=📚' }}
+          style={styles.cover}
+          resizeMode="cover"
+        />
+      </View>
+
       <Text style={styles.title}>{book.title}</Text>
       <Text style={styles.author}>{book.author}</Text>
 
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{sourceBadge}</Text>
-      </View>
+      <SourceBadge source={book.sourceType} />
 
       {book.description ? (
         <Text style={styles.description}>{book.description}</Text>
       ) : null}
 
-      {!hasText && (
-        <View style={styles.warningCard}>
-          <Text style={styles.warningText}>
-            ⚠️ No text source found for this book. Delete it and re-import from the Add Book screen.
-          </Text>
+      {/* Progress row */}
+      {pct > 0 && (
+        <View style={styles.progressSection}>
+          <Text style={styles.progressLabel}>{pct}% complete</Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${pct}%` }]} />
+          </View>
         </View>
+      )}
+
+      {!hasText && (
+        <WarningCard
+          message="No text source found. Delete this book and re-import it from Add Book."
+          type="warning"
+        />
       )}
 
       <VoiceSelector
         selectedVoice={book.voice}
         selectedSpeed={book.speed}
-        onVoiceChange={(voice: TtsVoice) => void setVoiceAndSpeed(book.id, voice, book.speed)}
-        onSpeedChange={(speed) => void setVoiceAndSpeed(book.id, book.voice, speed)}
+        onVoiceChange={(v: TtsVoice) => void setVoiceAndSpeed(book.id, v, book.speed)}
+        onSpeedChange={(s) => void setVoiceAndSpeed(book.id, book.voice, s)}
       />
 
-      <Pressable
-        style={[styles.primaryButton, !hasText && styles.primaryButtonDisabled]}
-        disabled={!hasText}
-        onPress={() => navigation.navigate('Player', { bookId: book.id })}
-        accessibilityRole="button"
-      >
-        <Text style={styles.primaryText}>
-          {book.status === 'listening' ? 'Continue Listening' : 'Start Listening'}
-        </Text>
+      <Pressable style={{ width: '100%' }}>
+        <PrimaryButton
+          label={book.status === 'listening' ? 'Continue Listening' : 'Start Listening'}
+          onPress={() => navigation.navigate('Player', { bookId: book.id })}
+          disabled={!hasText}
+        />
       </Pressable>
     </ScrollView>
   );
@@ -63,16 +80,15 @@ export const BookDetailScreen = ({ navigation, route }: Props) => {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 22, paddingBottom: 70 },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 32, textAlign: 'center' },
-  author: { color: colors.accent, textAlign: 'center', marginTop: 8, fontSize: 16 },
-  badge: { alignSelf: 'center', backgroundColor: colors.card, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginTop: 12, borderColor: colors.border, borderWidth: 1 },
-  badgeText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
-  description: { color: colors.textMuted, lineHeight: 22, marginVertical: 20 },
-  warningCard: { backgroundColor: '#2A1F0A', borderRadius: 14, padding: 14, borderColor: '#8A5A00', borderWidth: 1, marginBottom: 16 },
-  warningText: { color: '#E8A547', fontSize: 14, lineHeight: 20 },
-  primaryButton: { backgroundColor: colors.accent, padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 18 },
-  primaryButtonDisabled: { opacity: 0.4 },
-  primaryText: { color: colors.background, fontSize: 17, fontWeight: '900' },
+  content: { alignItems: 'center', padding: spacing.lg, paddingBottom: 60, gap: 14 },
+  coverCard: { backgroundColor: colors.card, borderRadius: radius.xl, overflow: 'hidden', marginTop: 8, marginBottom: 6 },
+  cover: { width: 200, height: 300 },
+  title: { fontFamily: typography.titleFont, fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  author: { fontSize: 15, color: colors.accent, fontWeight: '700', textAlign: 'center' },
+  description: { fontSize: 14, color: colors.textMuted, lineHeight: 22, textAlign: 'center', paddingHorizontal: 8 },
+  progressSection: { width: '100%', gap: 4 },
+  progressLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', textAlign: 'right' },
+  progressTrack: { height: 5, backgroundColor: colors.border, borderRadius: 99, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.accent },
   missing: { color: colors.text, margin: 24 },
 });

@@ -1,42 +1,51 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-
 import { colors, typography } from '../theme/colors';
+import { cardShadows, radius, spacing } from '../theme/theme';
 import { Book } from '../types';
 
-type Props = {
-  book: Book;
-  onPress: () => void;
-};
+type Props = { book: Book; onPress: () => void };
 
-const formatDate = (iso: string | null): string => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-};
+const formatDate = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+
+const sourceLabel: Record<string, string> = { gutenberg: 'Gutenberg', upload: 'Uploaded', demo: 'Demo' };
 
 export const BookCard = ({ book, onPress }: Props) => {
-  const sourceBadge = book.sourceType === 'upload' ? '📁' : '🌐';
-  const lastOpened = book.lastOpenedAt ? `Opened ${formatDate(book.lastOpenedAt)}` : '';
+  const pct = Math.round(book.progress * 100);
 
   return (
-    <Pressable style={styles.card} onPress={onPress} accessibilityRole="button">
+    <Pressable
+      style={({ pressed }) => [styles.card, cardShadows.soft, pressed && styles.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+    >
       <Image
-        source={{ uri: book.coverUrl || 'https://placehold.co/240x360/13131A/E8C547/png?text=BookDrive' }}
+        source={{ uri: book.coverUrl || 'https://placehold.co/160x240/FFC107/FFFFFF/png?text=📚' }}
         style={styles.cover}
+        resizeMode="cover"
       />
-      <Text style={styles.title} numberOfLines={2}>{book.title}</Text>
-      <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
 
-      <View style={styles.meta}>
-        <Text style={styles.sourceBadge}>{sourceBadge}</Text>
-        <Text style={styles.status}>{book.status}</Text>
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={2}>{book.title}</Text>
+        <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
+
+        <View style={styles.row}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{sourceLabel[book.sourceType] ?? book.sourceType}</Text>
+          </View>
+          <Text style={styles.pct}>{pct}%</Text>
+        </View>
+
+        {/* Progress bar */}
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${pct}%` }]} />
+        </View>
+
+        {book.lastOpenedAt
+          ? <Text style={styles.date}>Opened {formatDate(book.lastOpenedAt)}</Text>
+          : null
+        }
       </View>
-
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round(book.progress * 100)}%` }]} />
-      </View>
-
-      {lastOpened !== '' && <Text style={styles.lastOpened}>{lastOpened}</Text>}
     </Pressable>
   );
 };
@@ -45,19 +54,20 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
     backgroundColor: colors.card,
-    borderRadius: 22,
-    padding: 12,
-    marginBottom: 16,
-    borderColor: colors.border,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
   },
-  cover: { width: '100%', aspectRatio: 0.68, borderRadius: 16, backgroundColor: colors.cardElevated },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 17, marginTop: 10 },
-  author: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
-  meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  sourceBadge: { fontSize: 14 },
-  status: { color: colors.accent, textTransform: 'uppercase', fontSize: 9, letterSpacing: 1, fontWeight: '700' },
-  progressTrack: { height: 4, backgroundColor: colors.cardElevated, borderRadius: 99, overflow: 'hidden', marginTop: 8 },
-  progressFill: { height: '100%', backgroundColor: colors.accent },
-  lastOpened: { color: colors.textMuted, fontSize: 10, marginTop: 6 },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
+  cover: { width: '100%', aspectRatio: 0.68, backgroundColor: colors.cardElevated },
+  body: { padding: spacing.sm + 2 },
+  title: { fontFamily: typography.titleFont, fontSize: 14, fontWeight: '700', color: colors.text, marginTop: 2 },
+  author: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+  badge: { backgroundColor: colors.accentLight, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  badgeText: { fontSize: 9, fontWeight: '700', color: colors.accentDark, textTransform: 'uppercase', letterSpacing: 0.5 },
+  pct: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
+  track: { height: 3, backgroundColor: colors.border, borderRadius: 99, overflow: 'hidden', marginTop: 4 },
+  fill: { height: '100%', backgroundColor: colors.accent },
+  date: { fontSize: 10, color: colors.textLight, marginTop: 4 },
 });
