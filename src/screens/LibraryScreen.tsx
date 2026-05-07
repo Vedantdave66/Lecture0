@@ -35,12 +35,15 @@ export const LibraryScreen = () => {
             <Text style={styles.emptyIcon}>📚</Text>
             <Text style={styles.emptyTitle}>No books yet</Text>
             <Text style={styles.emptyBody}>
-              Upload a TXT or EPUB file, or search Project Gutenberg to start listening.
+              Search for a free book to start listening, or upload a file from your device.
             </Text>
             <PrimaryButton
-              label="Add Your First Book"
-              onPress={() => navigation.navigate('AddBook')}
+              label="Find a Free Book"
+              onPress={() => navigation.navigate('FindBook')}
             />
+            <Pressable onPress={() => navigation.navigate('AddBook')}>
+              <Text style={styles.uploadLink}>or upload a file</Text>
+            </Pressable>
           </View>
         }
         renderItem={({ item }) => (
@@ -51,16 +54,29 @@ export const LibraryScreen = () => {
         )}
       />
 
-      {/* FAB */}
+      {/* FABs */}
       {books.length > 0 && (
-        <Pressable
-          style={({ pressed }) => [styles.fab, cardShadows.accent, pressed && { opacity: 0.85 }]}
-          onPress={() => navigation.navigate('AddBook')}
-          accessibilityRole="button"
-          accessibilityLabel="Add a book"
-        >
-          <Ionicons name="add" size={32} color={colors.white} />
-        </Pressable>
+        <>
+          {/* Primary FAB — Find a Free Book */}
+          <Pressable
+            style={({ pressed }) => [styles.fab, cardShadows.accent, pressed && { opacity: 0.85 }]}
+            onPress={() => navigation.navigate('FindBook')}
+            accessibilityRole="button"
+            accessibilityLabel="Find a free book"
+          >
+            <Ionicons name="search" size={28} color={colors.white} />
+          </Pressable>
+
+          {/* Secondary FAB — Upload file */}
+          <Pressable
+            style={({ pressed }) => [styles.fabSecondary, cardShadows.soft, pressed && { opacity: 0.85 }]}
+            onPress={() => navigation.navigate('AddBook')}
+            accessibilityRole="button"
+            accessibilityLabel="Upload a file"
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={colors.textMuted} />
+          </Pressable>
+        </>
       )}
     </View>
   );
@@ -77,6 +93,7 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 60 },
   emptyTitle: { fontFamily: typography.titleFont, fontSize: 26, fontWeight: '800', color: colors.text },
   emptyBody: { fontSize: 15, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  uploadLink: { fontSize: 13, color: colors.textMuted, textDecorationLine: 'underline', marginTop: -4 },
   fab: {
     position: 'absolute',
     right: 22,
@@ -85,6 +102,19 @@ const styles = StyleSheet.create({
     height: 62,
     borderRadius: radius.full,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabSecondary: {
+    position: 'absolute',
+    right: 28,
+    bottom: 104,
+    width: 46,
+    height: 46,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

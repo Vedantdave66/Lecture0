@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import { Book, BookSearchResult, BookSourceType, TtsVoice } from '../types';
+import { Book, BookSearchResult, BookSection, BookSourceType, TtsVoice } from '../types';
 import { demoBooks } from './demoBooks';
 
 const LIBRARY_KEY = 'bookdrive:library';
@@ -12,6 +12,8 @@ type AddBookParams = {
   textUrl?: string | null;
   fileUri?: string | null;
   textCacheUri?: string | null;
+  sections?: BookSection[];
+  sectionType?: 'chapter' | 'section';
 };
 
 type LibraryState = {
@@ -22,6 +24,7 @@ type LibraryState = {
   updateBook: (bookId: string, patch: Partial<Book>) => Promise<void>;
   markOpened: (bookId: string) => Promise<void>;
   setVoiceAndSpeed: (bookId: string, voice: TtsVoice, speed: number) => Promise<void>;
+  updateSectionProgress: (bookId: string, sectionIndex: number, chunkIndex: number) => Promise<void>;
   getBookById: (bookId: string) => Book | undefined;
   seedDemoLibrary: () => Promise<void>;
   clearLibrary: () => Promise<void>;
@@ -50,6 +53,9 @@ const migrateBook = (raw: unknown): Book => {
     pdfLocalPath: (b.pdfLocalPath as string | null) ?? null,
     progress: (b.progress as number) ?? 0,
     currentChunkIndex: (b.currentChunkIndex as number) ?? 0,
+    sectionType: (b.sectionType as 'chapter' | 'section') ?? 'section',
+    sections: (b.sections as BookSection[]) ?? [],
+    currentSectionIndex: (b.currentSectionIndex as number) ?? 0,
     status: (b.status as Book['status']) ?? 'reading',
     voice: (b.voice as TtsVoice) ?? 'alloy',
     speed: (b.speed as number) ?? 1,
@@ -69,7 +75,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ books, isHydrated: true });
   },
 
-  addBook: async ({ result, sourceType, textUrl = null, fileUri = null, textCacheUri = null }) => {
+  addBook: async ({ result, sourceType, textUrl = null, fileUri = null, textCacheUri = null, sections = [], sectionType = 'section' }) => {
     const book: Book = {
       ...result,
       sourceType,
@@ -80,6 +86,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       pdfLocalPath: fileUri,    // deprecated compat
       progress: 0,
       currentChunkIndex: 0,
+      sectionType,
+      sections,
+      currentSectionIndex: 0,
       status: 'reading',
       voice: 'alloy',
       speed: 1,
@@ -104,6 +113,16 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   setVoiceAndSpeed: async (bookId, voice, speed) => {
     await get().updateBook(bookId, { voice, speed });
+  },
+
+  updateSectionProgress: async (bookId, sectionIndex, chunkIndex) => {
+    const total = get().getBookById(bookId)?.sections.length ?? 1;
+    const progress = total > 0 ? (sectionIndex + 1) / total : 0;
+    await get().updateBook(bookId, {
+      currentSectionIndex: sectionIndex,
+      currentChunkIndex: chunkIndex,
+      progress,
+    });
   },
 
   getBookById: (bookId) => get().books.find((b) => b.id === bookId),

@@ -111,8 +111,11 @@ export const extractFromText = (text: string): string[] => {
   return splitIntoChunks(cleaned);
 };
 
-/** Fetch a remote plain-text URL and extract chunks. */
-export const extractFromUrl = async (url: string): Promise<string[]> => {
+/**
+ * Fetch a remote URL and return the raw cleaned text (no chunking).
+ * Used by the resolver to run chapter detection before final chunk save.
+ */
+export const extractRawText = async (url: string): Promise<string> => {
   const res = await fetch(url);
   if (!res.ok) throw new ExtractionError(`Could not fetch text (HTTP ${res.status}): ${url}`);
   const contentType = res.headers.get('content-type') ?? '';
@@ -120,7 +123,14 @@ export const extractFromUrl = async (url: string): Promise<string[]> => {
     throw new ExtractionError(`Unexpected content-type "${contentType}" from ${url}`);
   }
   const raw = await res.text();
-  return extractFromText(raw);
+  return stripGutenbergBoilerplate(raw);
+};
+
+/** Fetch a remote plain-text URL and extract chunks. */
+export const extractFromUrl = async (url: string): Promise<string[]> => {
+  const raw = await extractRawText(url);
+  if (raw.length < 50) throw new ExtractionError('Page returned no readable text.');
+  return splitIntoChunks(raw);
 };
 
 /** Parse an EPUB ArrayBuffer and extract text chunks in spine order. */

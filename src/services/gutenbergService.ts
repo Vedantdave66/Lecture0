@@ -8,6 +8,10 @@ export type GutenbergBook = {
   coverUrl: string;
   /** Validated plain-text URL from Gutendex formats object, or null if unavailable. */
   textUrl: string | null;
+  /** EPUB URL from Gutendex formats object, or null if unavailable. */
+  epubUrl: string | null;
+  /** HTML URL from Gutendex formats object, or null if unavailable. */
+  htmlUrl: string | null;
 };
 
 type GutendexDoc = {
@@ -21,11 +25,21 @@ type GutendexResponse = {
   results?: GutendexDoc[];
 };
 
-/** Pick the best text URL from a Gutendex formats object. Prefers text/plain. */
-const pickTextUrl = (formats: Record<string, string>): string | null => {
-  // text/plain; charset=utf-8 is the canonical Gutenberg plain-text MIME
-  const entry = Object.entries(formats).find(([mime]) => mime.startsWith('text/plain'));
-  return entry?.[1] ?? null;
+/** Pick all readable URLs from a Gutendex formats object. */
+export const pickAllUrls = (
+  formats: Record<string, string>
+): { textUrl: string | null; epubUrl: string | null; htmlUrl: string | null } => {
+  let textUrl: string | null = null;
+  let epubUrl: string | null = null;
+  let htmlUrl: string | null = null;
+
+  for (const [mime, url] of Object.entries(formats)) {
+    if (mime.startsWith('text/plain') && !textUrl) textUrl = url;
+    else if (mime.includes('epub') && !epubUrl) epubUrl = url;
+    else if (mime.startsWith('text/html') && !htmlUrl) htmlUrl = url;
+  }
+
+  return { textUrl, epubUrl, htmlUrl };
 };
 
 /** Validate that a URL actually responds with HTTP 200. */
@@ -40,7 +54,7 @@ const validateUrl = async (url: string): Promise<boolean> => {
 
 /**
  * Search Project Gutenberg via Gutendex.
- * Returns books that have a confirmed plain-text source URL.
+ * Returns books with all available format URLs.
  */
 export const searchGutenberg = async (query: string): Promise<GutenbergBook[]> => {
   if (!query.trim()) return [];
@@ -49,15 +63,15 @@ export const searchGutenberg = async (query: string): Promise<GutenbergBook[]> =
     `https://gutendex.com/books?search=${encodeURIComponent(query)}&mime_type=text`
   );
   if (!response.ok) {
-    throw new Error(`Gutendex search failed (HTTP ${response.status})`);
+    throw new Error(`Search failed (HTTP ${response.status})`);
   }
 
   const data = (await response.json()) as GutendexResponse;
   const results = data.results ?? [];
 
-  const books: GutenbergBook[] = results.slice(0, 10).map((doc) => {
+  const books: GutenbergBook[] = results.slice(0, 12).map((doc) => {
     const formats = doc.formats ?? {};
-    const textUrl = pickTextUrl(formats);
+    const { textUrl, epubUrl, htmlUrl } = pickAllUrls(formats);
     const coverUrl = formats['image/jpeg'] ?? '';
     const author =
       doc.authors?.map((a) => {
@@ -72,6 +86,8 @@ export const searchGutenberg = async (query: string): Promise<GutenbergBook[]> =
       author,
       coverUrl,
       textUrl,
+      epubUrl,
+      htmlUrl,
     };
   });
 

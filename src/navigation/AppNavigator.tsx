@@ -11,6 +11,7 @@ import { AddBookScreen } from '../screens/AddBookScreen';
 import { ApiKeyScreen } from '../screens/ApiKeyScreen';
 import { BookDetailScreen } from '../screens/BookDetailScreen';
 import { DrivingModeScreen } from '../screens/DrivingModeScreen';
+import { FindBookScreen } from '../screens/FindBookScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { PlayerScreen } from '../screens/PlayerScreen';
 import { useLibraryStore } from '../store/libraryStore';
@@ -90,11 +91,12 @@ export const AppNavigator = ({ navRef }: AppNavigatorProps) => (
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="ApiKey" component={ApiKeyScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="AddBook" component={AddBookScreen} options={{ title: 'Add Book' }} />
+      <Stack.Screen name="ApiKey" component={ApiKeyScreen} options={{ title: 'Premium Voice Setup' }} />
+      <Stack.Screen name="FindBook" component={FindBookScreen} options={{ title: 'Find a Free Book' }} />
+      <Stack.Screen name="AddBook" component={AddBookScreen} options={{ title: 'Upload a File' }} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
       <Stack.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />
-      <Stack.Screen name="DrivingMode" component={DrivingModeScreen} options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="DrivingMode" component={DrivingModeScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   </NavigationContainer>
 );
