@@ -1,80 +1,101 @@
+// Audio service — SDK 54 compatible, uses expo-audio (not the deprecated expo-av).
+//
+// Public API surface is unchanged from the old expo-av version so all callers
+// (playerStore, PlayerScreen, App.tsx) continue to work without modification.
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio, AVPlaybackStatus, AVPlaybackStatusSuccess, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 const POSITION_KEY_PREFIX = 'bookdrive:position:';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 type SavedPosition = {
-  positionMillis: number;
+  positionSeconds: number;
   chunkIndex: number;
 };
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'ended' | 'error';
 
+// ---------------------------------------------------------------------------
+// Module-level state (singleton service — one player at a time)
+// ---------------------------------------------------------------------------
+
 let isSetup = false;
 let activeBookId: string | null = null;
 let activeChunks: string[] = [];
 let activeChunkIndex = 0;
-let sound: Audio.Sound | null = null;
+let player: AudioPlayer | null = null;
 let playbackState: PlaybackState = 'idle';
 
-const isLoadedStatus = (status: AVPlaybackStatus): status is AVPlaybackStatusSuccess => status.isLoaded;
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-const unloadCurrentSound = async (): Promise<void> => {
-  if (!sound) {
-    return;
+const destroyPlayer = (): void => {
+  if (!player) return;
+  try {
+    player.pause();
+    player.remove();
+  } catch {
+    // Ignore errors during cleanup
   }
-
-  sound.setOnPlaybackStatusUpdate(null);
-  await sound.unloadAsync();
-  sound = null;
+  player = null;
 };
 
-const loadChunkAtIndex = async (chunkIndex: number, shouldPlay = false, positionMillis = 0): Promise<void> => {
+const loadChunkAtIndex = (chunkIndex: number, shouldPlay = false, positionSeconds = 0): void => {
   if (chunkIndex < 0 || chunkIndex >= activeChunks.length) {
     playbackState = 'ended';
     return;
   }
 
   playbackState = 'loading';
-  await unloadCurrentSound();
+  destroyPlayer();
   activeChunkIndex = chunkIndex;
 
-  const { sound: nextSound } = await Audio.Sound.createAsync(
-    { uri: activeChunks[activeChunkIndex] },
-    { shouldPlay, positionMillis, progressUpdateIntervalMillis: 1000 },
-    (status) => {
-      if (!isLoadedStatus(status)) {
-        if ('error' in status) {
-          playbackState = 'error';
-        }
-        return;
-      }
+  const uri = activeChunks[chunkIndex];
+  console.log('[audioService] Loading chunk', chunkIndex, uri);
 
-      playbackState = status.isPlaying ? 'playing' : 'paused';
-      if (status.didJustFinish) {
-        void loadChunkAtIndex(activeChunkIndex + 1, true);
-      }
+  player = createAudioPlayer({ uri }, { updateInterval: 1000 });
+
+  // Listen for playback status updates
+  player.addListener('playbackStatusUpdate', (status) => {
+    if (status.didJustFinish) {
+      // Auto-advance to next chunk
+      loadChunkAtIndex(activeChunkIndex + 1, true);
+      return;
     }
-  );
+    playbackState = status.playing ? 'playing' : 'paused';
+  });
 
-  sound = nextSound;
-  playbackState = shouldPlay ? 'playing' : 'paused';
+  // Seek to saved position if needed
+  if (positionSeconds > 0) {
+    void player.seekTo(positionSeconds);
+  }
+
+  if (shouldPlay) {
+    player.play();
+    playbackState = 'playing';
+  } else {
+    playbackState = 'paused';
+  }
 };
+
+// ---------------------------------------------------------------------------
+// Public service object
+// ---------------------------------------------------------------------------
 
 export const audioService = {
   setup: async (): Promise<void> => {
-    if (isSetup) {
-      return;
-    }
+    if (isSetup) return;
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'doNotMix',
+      allowsRecording: false,
     });
     isSetup = true;
   },
@@ -84,109 +105,85 @@ export const audioService = {
     activeBookId = bookId;
     activeChunks = chunks;
     activeChunkIndex = 0;
-    await unloadCurrentSound();
+    destroyPlayer();
 
     if (chunks.length > 0) {
-      await loadChunkAtIndex(0, false);
+      loadChunkAtIndex(0, false);
     }
   },
 
   play: async (): Promise<void> => {
     await audioService.setup();
-    if (!sound && activeChunks.length > 0) {
-      await loadChunkAtIndex(activeChunkIndex, true);
+
+    if (!player && activeChunks.length > 0) {
+      loadChunkAtIndex(activeChunkIndex, true);
       return;
     }
-    await sound?.playAsync();
+
+    player?.play();
     playbackState = 'playing';
   },
 
   pause: async (): Promise<void> => {
-    await sound?.pauseAsync();
+    player?.pause();
     playbackState = 'paused';
     await audioService.savePosition();
   },
 
   skipForward: async (seconds: number): Promise<void> => {
-    if (!sound) {
+    if (!player) return;
+    const nextTime = player.currentTime + seconds;
+    const duration = player.duration;
+
+    if (duration > 0 && nextTime >= duration && activeChunkIndex < activeChunks.length - 1) {
+      loadChunkAtIndex(activeChunkIndex + 1, player.playing, Math.max(0, nextTime - duration));
       return;
     }
 
-    const status = await sound.getStatusAsync();
-    if (!isLoadedStatus(status)) {
-      return;
-    }
-
-    const nextPosition = status.positionMillis + seconds * 1000;
-    const duration = status.durationMillis ?? nextPosition;
-
-    if (nextPosition >= duration && activeChunkIndex < activeChunks.length - 1) {
-      await loadChunkAtIndex(activeChunkIndex + 1, status.isPlaying, nextPosition - duration);
-      return;
-    }
-
-    await sound.setPositionAsync(Math.min(nextPosition, duration));
+    await player.seekTo(Math.min(nextTime, duration > 0 ? duration : nextTime));
   },
 
   skipBack: async (seconds: number): Promise<void> => {
-    if (!sound) {
+    if (!player) return;
+    const nextTime = player.currentTime - seconds;
+
+    if (nextTime < 0 && activeChunkIndex > 0) {
+      loadChunkAtIndex(activeChunkIndex - 1, player.playing, 0);
       return;
     }
 
-    const status = await sound.getStatusAsync();
-    if (!isLoadedStatus(status)) {
-      return;
-    }
-
-    const nextPosition = status.positionMillis - seconds * 1000;
-    if (nextPosition < 0 && activeChunkIndex > 0) {
-      await loadChunkAtIndex(activeChunkIndex - 1, status.isPlaying, 0);
-      return;
-    }
-
-    await sound.setPositionAsync(Math.max(0, nextPosition));
+    await player.seekTo(Math.max(0, nextTime));
   },
 
   savePosition: async (bookId = activeBookId): Promise<void> => {
-    if (!bookId || !sound) {
-      return;
-    }
-
-    const status = await sound.getStatusAsync();
-    if (!isLoadedStatus(status)) {
-      return;
-    }
+    if (!bookId || !player) return;
 
     const position: SavedPosition = {
-      positionMillis: status.positionMillis,
-      chunkIndex: activeChunkIndex
+      positionSeconds: player.currentTime,
+      chunkIndex: activeChunkIndex,
     };
     await AsyncStorage.setItem(`${POSITION_KEY_PREFIX}${bookId}`, JSON.stringify(position));
   },
 
   restorePosition: async (bookId = activeBookId): Promise<void> => {
-    if (!bookId || activeChunks.length === 0) {
-      return;
-    }
+    if (!bookId || activeChunks.length === 0) return;
 
     const raw = await AsyncStorage.getItem(`${POSITION_KEY_PREFIX}${bookId}`);
-    if (!raw) {
-      return;
-    }
+    if (!raw) return;
 
     const parsed = JSON.parse(raw) as Partial<SavedPosition>;
     const chunkIndex = typeof parsed.chunkIndex === 'number' ? parsed.chunkIndex : 0;
-    const positionMillis = typeof parsed.positionMillis === 'number' ? parsed.positionMillis : 0;
-    await loadChunkAtIndex(chunkIndex, false, positionMillis);
+    const positionSeconds = typeof parsed.positionSeconds === 'number' ? parsed.positionSeconds : 0;
+    loadChunkAtIndex(chunkIndex, false, positionSeconds);
   },
 
-  getPlaybackState: async (): Promise<PlaybackState> => playbackState,
+  getPlaybackState: (): PlaybackState => playbackState,
 
   unload: async (): Promise<void> => {
-    await unloadCurrentSound();
+    destroyPlayer();
     activeChunks = [];
     activeChunkIndex = 0;
     activeBookId = null;
     playbackState = 'idle';
-  }
+  },
 };

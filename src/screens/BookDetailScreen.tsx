@@ -1,6 +1,5 @@
-import * as DocumentPicker from 'expo-document-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { VoiceSelector } from '../components/VoiceSelector';
 import { useLibraryStore } from '../store/libraryStore';
@@ -10,46 +9,53 @@ import { RootStackParamList, TtsVoice } from '../types';
 type Props = NativeStackScreenProps<RootStackParamList, 'BookDetail'>;
 
 export const BookDetailScreen = ({ navigation, route }: Props) => {
-  const book = useLibraryStore((state) => state.getBookById(route.params.bookId));
-  const setBookPDF = useLibraryStore((state) => state.setBookPDF);
-  const setVoiceAndSpeed = useLibraryStore((state) => state.setVoiceAndSpeed);
+  const book = useLibraryStore((s) => s.getBookById(route.params.bookId));
+  const setVoiceAndSpeed = useLibraryStore((s) => s.setVoiceAndSpeed);
 
   if (!book) {
     return <View style={styles.screen}><Text style={styles.missing}>Book not found.</Text></View>;
   }
 
-  const uploadPDF = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
-    if (result.canceled) {
-      return;
-    }
-    const asset = result.assets[0];
-    const destination = asset.uri;
-    await setBookPDF(book.id, asset.uri, destination);
-    Alert.alert('PDF uploaded', 'Your own PDF is ready for listening.');
-  };
-
-  const pdfStatus = book.pdfLocalPath ? 'user uploaded' : book.pdfUrl ? 'found' : 'not found';
+  const sourceBadge = book.sourceType === 'upload' ? '📁 Uploaded file' : '🌐 Project Gutenberg';
+  const hasText = !!(book.textCacheUri ?? book.textUrl ?? book.fileUri);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Image source={{ uri: book.coverUrl || 'https://placehold.co/240x360/13131A/E8C547/png?text=BookDrive' }} style={styles.cover} />
       <Text style={styles.title}>{book.title}</Text>
       <Text style={styles.author}>{book.author}</Text>
-      <Text style={styles.description}>{book.description}</Text>
-      <View style={styles.statusCard}>
-        <Text style={styles.statusLabel}>PDF status</Text>
-        <Text style={styles.statusValue}>{pdfStatus}</Text>
+
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{sourceBadge}</Text>
       </View>
-      {!book.pdfUrl && !book.pdfLocalPath ? <Pressable style={styles.secondaryButton} onPress={() => void uploadPDF()}><Text style={styles.secondaryText}>Upload your own PDF</Text></Pressable> : null}
+
+      {book.description ? (
+        <Text style={styles.description}>{book.description}</Text>
+      ) : null}
+
+      {!hasText && (
+        <View style={styles.warningCard}>
+          <Text style={styles.warningText}>
+            ⚠️ No text source found for this book. Delete it and re-import from the Add Book screen.
+          </Text>
+        </View>
+      )}
+
       <VoiceSelector
         selectedVoice={book.voice}
         selectedSpeed={book.speed}
         onVoiceChange={(voice: TtsVoice) => void setVoiceAndSpeed(book.id, voice, book.speed)}
         onSpeedChange={(speed) => void setVoiceAndSpeed(book.id, book.voice, speed)}
       />
-      <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('Player', { bookId: book.id })}>
-        <Text style={styles.primaryText}>Start Listening</Text>
+
+      <Pressable
+        style={[styles.primaryButton, !hasText && styles.primaryButtonDisabled]}
+        disabled={!hasText}
+        onPress={() => navigation.navigate('Player', { bookId: book.id })}
+        accessibilityRole="button"
+      >
+        <Text style={styles.primaryText}>
+          {book.status === 'listening' ? 'Continue Listening' : 'Start Listening'}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -58,16 +64,15 @@ export const BookDetailScreen = ({ navigation, route }: Props) => {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 22, paddingBottom: 70 },
-  cover: { width: 170, height: 255, borderRadius: 18, alignSelf: 'center', backgroundColor: colors.card, marginBottom: 20 },
-  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 34, textAlign: 'center' },
+  title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 32, textAlign: 'center' },
   author: { color: colors.accent, textAlign: 'center', marginTop: 8, fontSize: 16 },
-  description: { color: colors.textMuted, lineHeight: 22, marginVertical: 22 },
-  statusCard: { backgroundColor: colors.card, borderRadius: 18, padding: 16, borderColor: colors.border, borderWidth: 1, marginBottom: 18 },
-  statusLabel: { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
-  statusValue: { color: colors.text, fontSize: 20, marginTop: 5, textTransform: 'capitalize' },
+  badge: { alignSelf: 'center', backgroundColor: colors.card, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginTop: 12, borderColor: colors.border, borderWidth: 1 },
+  badgeText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  description: { color: colors.textMuted, lineHeight: 22, marginVertical: 20 },
+  warningCard: { backgroundColor: '#2A1F0A', borderRadius: 14, padding: 14, borderColor: '#8A5A00', borderWidth: 1, marginBottom: 16 },
+  warningText: { color: '#E8A547', fontSize: 14, lineHeight: 20 },
   primaryButton: { backgroundColor: colors.accent, padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 18 },
+  primaryButtonDisabled: { opacity: 0.4 },
   primaryText: { color: colors.background, fontSize: 17, fontWeight: '900' },
-  secondaryButton: { borderColor: colors.accent, borderWidth: 1, padding: 15, borderRadius: 18, alignItems: 'center', marginBottom: 20 },
-  secondaryText: { color: colors.accent, fontWeight: '800' },
-  missing: { color: colors.text, margin: 24 }
+  missing: { color: colors.text, margin: 24 },
 });

@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RefObject } from 'react';
 import { Text, View } from 'react-native';
 
 import { AudioPlayer } from '../components/AudioPlayer';
 import { TextureOverlay } from '../components/TextureOverlay';
 import { AddBookScreen } from '../screens/AddBookScreen';
+import { ApiKeyScreen } from '../screens/ApiKeyScreen';
 import { BookDetailScreen } from '../screens/BookDetailScreen';
 import { DrivingModeScreen } from '../screens/DrivingModeScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
@@ -58,10 +60,15 @@ const MainTabs = () => (
   </Tab.Navigator>
 );
 
-export const AppNavigator = () => (
-  <NavigationContainer theme={theme}>
+type AppNavigatorProps = {
+  navRef?: RefObject<NavigationContainerRef<RootStackParamList> | null>;
+};
+
+export const AppNavigator = ({ navRef }: AppNavigatorProps) => (
+  <NavigationContainer theme={theme} ref={navRef}>
     <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <Stack.Screen name="ApiKey" component={ApiKeyScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AddBook" component={AddBookScreen} options={{ title: 'Add Book' }} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: 'Book Details' }} />
       <Stack.Screen name="Player" component={PlayerScreen} options={{ title: 'Player' }} />

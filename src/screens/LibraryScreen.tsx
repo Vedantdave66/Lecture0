@@ -12,8 +12,7 @@ type Navigation = NativeStackNavigationProp<RootStackParamList>;
 
 export const LibraryScreen = () => {
   const navigation = useNavigation<Navigation>();
-  const books = useLibraryStore((state) => state.books);
-  const seedDemoLibrary = useLibraryStore((state) => state.seedDemoLibrary);
+  const books = useLibraryStore((s) => s.books);
 
   return (
     <View style={styles.screen}>
@@ -23,21 +22,35 @@ export const LibraryScreen = () => {
       </View>
       <FlatList
         data={books}
-        keyExtractor={(book) => book.id}
+        keyExtractor={(b) => b.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.content}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.empty}>Add a book to start building your drive-time library, or load a realistic local demo with public-domain titles.</Text>
-            <Pressable style={styles.demoButton} onPress={() => void seedDemoLibrary()}>
-              <Text style={styles.demoButtonText}>Load demo library</Text>
-            </Pressable>
+            <Text style={styles.emptyIcon}>📚</Text>
+            <Text style={styles.emptyTitle}>Your library is empty</Text>
+            <Text style={styles.empty}>
+              Tap the <Text style={styles.accentText}>+</Text> button to add a book.{'\n'}
+              You can upload a <Text style={styles.accentText}>.txt</Text> or{' '}
+              <Text style={styles.accentText}>.epub</Text> file, or search{' '}
+              <Text style={styles.accentText}>Project Gutenberg</Text> for free public-domain titles.
+            </Text>
           </View>
         }
-        renderItem={({ item }) => <BookCard book={item} onPress={() => navigation.navigate('BookDetail', { bookId: item.id })} />}
+        renderItem={({ item }) => (
+          <BookCard
+            book={item}
+            onPress={() => navigation.navigate('BookDetail', { bookId: item.id })}
+          />
+        )}
       />
-      <Pressable style={styles.fab} onPress={() => navigation.navigate('AddBook')}>
+      <Pressable
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddBook')}
+        accessibilityRole="button"
+        accessibilityLabel="Add a book"
+      >
         <Ionicons name="add" size={34} color={colors.background} />
       </Pressable>
     </View>
@@ -51,9 +64,10 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: typography.titleFont, fontSize: 42, marginTop: 4 },
   content: { padding: 16, paddingBottom: 120 },
   gridRow: { justifyContent: 'space-between' },
-  emptyState: { alignItems: 'center', marginTop: 92, paddingHorizontal: 12 },
-  empty: { color: colors.textMuted, textAlign: 'center', fontSize: 16, lineHeight: 24 },
-  demoButton: { backgroundColor: colors.accent, paddingHorizontal: 18, paddingVertical: 13, borderRadius: 999, marginTop: 18 },
-  demoButtonText: { color: colors.background, fontWeight: '900' },
-  fab: { position: 'absolute', right: 22, bottom: 30, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }
+  emptyState: { alignItems: 'center', marginTop: 72, paddingHorizontal: 20 },
+  emptyIcon: { fontSize: 56, marginBottom: 16 },
+  emptyTitle: { color: colors.text, fontFamily: typography.titleFont, fontSize: 26, marginBottom: 12 },
+  empty: { color: colors.textMuted, textAlign: 'center', fontSize: 15, lineHeight: 24 },
+  accentText: { color: colors.accent, fontWeight: '700' },
+  fab: { position: 'absolute', right: 22, bottom: 30, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
 });
